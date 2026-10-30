@@ -1,0 +1,33 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# JavaScript dependencies and output
+node_modules/
+dist/
+build/
+.next/
+coverage/
+
+# Python dependencies and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Local databases and recordings
+*.sqlite
+*.sqlite3
+*.db
+recordings/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
