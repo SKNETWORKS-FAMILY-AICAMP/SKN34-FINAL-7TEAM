@@ -32,6 +32,15 @@ class MatchTests(unittest.TestCase):
         self.assertIsNone(result[0]['price'])
         self.assertEqual(count, 0)
 
+    def test_user_entered_price_survives_store_refresh(self):
+        source = {'kind': 'user_entered', 'entered_at': '2026-11-03'}
+        items = [{'name': '아메리카노', 'temperature': 'ICE', 'group': '음료', 'price': 2500, 'price_source': source}]
+        sections = [{'name': '커피', 'hasMenuItem': [offering('아이스 아메리카노', 2000)]}]
+        result, count = match_prices(items, sections, 'now')
+        self.assertEqual(result[0]['price'], 2500)
+        self.assertEqual(result[0]['price_source'], source)
+        self.assertEqual(count, 0)
+
 
 if __name__ == '__main__':
     unittest.main()

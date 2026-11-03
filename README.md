@@ -17,7 +17,7 @@
 
 메뉴 화면은 `data/menus/mega/mega_menu.json`과 `data/menus/mega/images`의 로컬 데이터를 사용합니다. 수집 데이터와 사진은 GitHub에 포함되지 않으므로 별도로 준비해야 합니다. 데이터가 없으면 메뉴 API는 오류를 표시합니다.
 
-프로젝트 루트에서 다음 명령으로 메뉴 데이터를 수집할 수 있습니다. 가격 수집은 선택 사항이며, 고색산업단지점의 수집 당시 기본가 중 일치하는 메뉴에만 연결합니다.
+아래 명령은 메뉴 데이터가 없는 새 환경에서 최초로 수집할 때 사용합니다. 이미 가격을 입력한 메뉴 파일이 있다면 덮어쓰므로 아래 명령을 그대로 실행하지 마세요. 가격 수집은 선택 사항이며, 고색산업단지점의 수집 당시 기본가 중 일치하는 메뉴에만 연결합니다.
 
 ```powershell
 python -m pip install -r scripts/mega/requirements.txt
@@ -25,6 +25,12 @@ python scripts/mega/mega_collector.py --output-dir data/menus/mega
 python scripts/mega/download_images.py --menu-file data/menus/mega/mega_menu.json --output-dir data/menus/mega/images
 python scripts/mega/collect_passorder_prices.py --menu-file data/menus/mega/mega_menu.json --output-file data/menus/mega/mega_menu_priced.json
 Move-Item -LiteralPath data/menus/mega/mega_menu_priced.json -Destination data/menus/mega/mega_menu.json -Force
+```
+
+사용자가 입력한 가격 엑셀은 다음과 같이 별도 파일로 적용할 수 있습니다. 엑셀은 개인 로컬에 보관하고, 결과를 확인한 후 메뉴 JSON을 교체하세요. 공식 메뉴 수집기는 결과 파일을 새로 만들므로 기존 메뉴 파일에 직접 재수집하면 수동 가격이 사라질 수 있습니다. 재수집 시 별도 폴더에 저장하고 가격 엑셀을 다시 적용하세요. 지점 가격 수집기는 수동 입력 가격을 보존합니다.
+
+```powershell
+python scripts/mega/import_prices.py --workbook <가격입력엑셀경로> --menu-file data/menus/mega/mega_menu.json --output-file data/menus/mega/mega_menu_updated.json
 ```
 
 출처는 [메가MGC커피 공식 메뉴](https://www.mega-mgccoffee.com/menu/menu.php?category=1&menu_category1=1&menu_category2=1&page=1)와 [패스오더 고색산업단지점 메뉴](https://app.passorder.co.kr/normal/4d1abd73-c5bb-45d0-b787-ff341b9f84f9/menus)입니다. 가격과 이미지의 이용 범위는 해당 자료의 이용 조건을 따릅니다. 수집 방법과 저장 필드는 `scripts/mega/README.md` 및 `scripts/mega/README_images.md`를 참고하세요.

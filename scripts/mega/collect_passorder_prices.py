@@ -58,6 +58,10 @@ def match_prices(menu, sections, observed_at):
     matched = 0
     for original in menu:
         item = dict(original)
+        # A store refresh must not erase prices supplied by the user.
+        if (item.get('price_source') or {}).get('kind') == 'user_entered' and item.get('price') is not None:
+            output.append(item)
+            continue
         item['price'] = None
         item.pop('price_source', None)
         key = (normalized(item['name']), item.get('temperature'))
