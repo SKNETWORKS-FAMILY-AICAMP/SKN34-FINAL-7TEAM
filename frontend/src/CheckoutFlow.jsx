@@ -87,7 +87,7 @@ export default function CheckoutFlow({ cart, onClose, onComplete, speak }) {
           <div className="ck-order-list">{cart.map((item) => {
             const options = renderOptions(item.selectedOptions);
             return <div className="ck-order-row" key={item.lineId || item.id}>
-              <div><strong>{item.name}</strong>{item.temperature && <span>{item.temperature === 'HOT' ? '따뜻하게' : item.temperature === 'ICE' ? '차갑게' : item.temperature}</span>}{options && <span>{options}</span>}</div>
+              <div><strong>{item.name}</strong>{options && <span>{options}</span>}</div>
               <span>{item.quantity}개</span><b>{PRICE(Number.isFinite(item.price) ? item.price * item.quantity : null)}</b>
             </div>;
           })}</div>
