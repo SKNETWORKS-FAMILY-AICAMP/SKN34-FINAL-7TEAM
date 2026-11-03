@@ -1,0 +1,59 @@
+.mk-page { --mk-ink:#282c29; --mk-green:#355548; --mk-border:#e2ded3; background:#f5f3ee; color:var(--mk-ink); min-height:100vh; display:flex; flex-direction:column; }
+.mk-page button,.mk-dialog button { cursor:pointer; font-family:inherit; }
+.mk-page button:disabled,.mk-dialog button:disabled { cursor:not-allowed; opacity:.55; }
+.mk-page button:focus-visible,.mk-dialog button:focus-visible,.mk-page input:focus-visible,.mk-dialog a:focus-visible { outline:3px solid #d27d3f; outline-offset:3px; }
+.mk-header { background:#324c40; color:#fff; }
+.mk-header-row { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; min-height:68px; padding:10px 20px; }
+.mk-brand { display:flex; align-items:center; justify-content:center; gap:8px; white-space:nowrap; }
+.mk-brand strong { font-size:25px; letter-spacing:.02em; }
+.mk-brand small { font-size:13px; font-weight:700; opacity:.84; }
+.mk-home,.mk-tools button { min-height:44px; border:1px solid #a9beb1; border-radius:9px; padding:8px 12px; color:#fff; background:transparent; font-size:16px; font-weight:750; }
+.mk-home { justify-self:start; }.mk-tools { display:flex; justify-content:flex-end; gap:6px; }.mk-tools button[aria-pressed='true'] { background:#fff; color:#324c40; }
+.mk-tabs { display:flex; overflow-x:auto; scrollbar-width:thin; gap:0; padding:0 14px; background:#f5ede0; color:#324c40; border-bottom:1px solid #ddd5c7; }
+.mk-tabs button { flex:1 0 auto; min-height:57px; border:0; border-bottom:4px solid transparent; padding:11px 16px; background:none; color:#4d5049; font-size:17px; font-weight:800; white-space:nowrap; }
+.mk-tabs button.is-active { border-bottom-color:#b65f3b; color:#914626; }
+.mk-menu { flex:1 0 auto; padding:20px 22px 18px; }
+.mk-menu-title { display:flex; align-items:center; justify-content:space-between; gap:10px; }.mk-menu-title>div { margin-right:auto; }.mk-eyebrow { display:block; font-size:13px; letter-spacing:.08em; color:#80654d; font-weight:850; }.mk-menu-title h1 { margin:3px 0 0; font-size:28px; line-height:1.25; }
+.mk-listen,.mk-secondary,.mk-cart-help,.mk-clear { min-height:46px; border:1px solid #d1c5b4; border-radius:9px; padding:8px 14px; background:#fffdf9; color:#3d463e; font-size:16px; font-weight:800; }
+.mk-search { display:flex; align-items:center; gap:10px; margin:15px 0 10px; }.mk-search label { font-weight:800; white-space:nowrap; }.mk-search input { min-width:0; width:100%; min-height:48px; border:1px solid #cfc6b8; border-radius:9px; padding:10px 14px; font:inherit; font-size:17px; background:white; }
+.mk-results { margin:8px 0 10px; color:#615b53; font-size:15px; font-weight:700; }.mk-status { padding:25px; border-radius:12px; background:#fff; font-size:18px; }.mk-status button { margin-left:8px; }
+.mk-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.mk-card { position:relative; display:flex; flex-direction:column; align-items:center; min-width:0; min-height:172px; padding:10px 8px 12px; border:1px solid #ebe4d9; border-radius:12px; background:#fff; color:#2a302b; text-align:center; box-shadow:0 2px 7px rgba(45,42,35,.04); }
+.mk-card:hover { border-color:#809b88; background:#fafff9; }.mk-card strong { font-size:17px; line-height:1.3; overflow-wrap:anywhere; }.mk-card-art { display:grid; place-items:center; height:84px; width:100%; }.mk-art { width:82px; height:82px; }.mk-new { position:absolute; top:9px; left:9px; border-radius:20px; background:#e4efe6; color:#315b40; padding:3px 7px; font-size:12px; font-weight:800; }.mk-card-temp { margin-top:3px; color:#5e625c; font-size:14px; font-weight:700; }.mk-card-price { margin-top:auto; padding-top:5px; color:#a34c28; font-size:15px; font-weight:800; }
+.mk-pages { display:flex; align-items:center; justify-content:center; gap:18px; padding:16px 0 4px; font-size:17px; font-weight:800; }.mk-source { margin:12px 0 0; color:#716c64; font-size:13px; line-height:1.5; }
+.mk-cart { flex:none; background:#fff; border-top:4px solid #ded4c4; padding:17px 22px 22px; }.mk-cart-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }.mk-cart-heading>div:first-child strong { display:block; margin-top:3px; font-size:21px; }.mk-cart-heading>div:last-child { display:flex; gap:8px; }.mk-clear { color:#973b29; }.mk-cart-tip { margin:8px 0; font-size:15px; }
+.mk-cart-layout { display:grid; grid-template-columns:minmax(0,1fr) 200px; gap:16px; margin-top:12px; }.mk-cart-list { max-height:230px; min-height:90px; overflow:auto; border-top:1px solid #e8e2d8; }.mk-empty { margin:0; padding:22px 8px; color:#6b6c65; }.mk-cart-item { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:14px; padding:12px 5px; border-bottom:1px solid #eee8e0; }.mk-cart-name { display:flex; flex-direction:column; gap:4px; min-width:0; }.mk-cart-name strong { overflow-wrap:anywhere; }.mk-cart-name small { color:#6b6259; line-height:1.4; }.mk-cart-item>span { color:#9f5136; font-weight:800; white-space:nowrap; }
+.mk-quantity { display:inline-flex; align-items:center; justify-content:center; gap:9px; white-space:nowrap; }.mk-quantity button { width:38px; height:38px; border:1px solid #c9bdae; border-radius:50%; background:#fff; color:#3b463c; font-size:23px; font-weight:800; }.mk-cart-checkout { display:flex; flex-direction:column; align-items:stretch; gap:5px; padding:12px; border-radius:12px; background:#f6f1e8; }.mk-cart-checkout span { font-size:15px; font-weight:700; }.mk-cart-checkout strong { margin-bottom:auto; font-size:21px; }.mk-primary { min-height:52px; border:0; border-radius:10px; padding:12px 18px; background:#355548; color:#fff; font-size:18px; font-weight:850; }.mk-primary:hover { background:#294638; }
+.mk-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:16px; background:rgba(26,30,27,.67); }.mk-dialog { display:flex; flex-direction:column; width:min(100%,760px); max-height:min(92vh,1000px); overflow:hidden; border-radius:16px; background:#fffdf9; box-shadow:0 18px 60px rgba(0,0,0,.24); }.mk-dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:17px 20px; background:#e6d3b2; }.mk-dialog-heading h2 { margin:4px 0 0; font-size:23px; line-height:1.25; }.mk-close { flex:none; width:44px; height:44px; border:0; border-radius:50%; background:#fffaf2; color:#3b463c; font-size:29px; }.mk-dialog-body { overflow-y:auto; padding:18px 20px; }.mk-selected { display:flex; align-items:center; gap:14px; }.mk-selected-art { display:grid; place-items:center; flex:none; width:95px; height:95px; border-radius:12px; background:#f4ece1; }.mk-selected-info { flex:1; min-width:0; }.mk-selected-info h3 { margin:0; font-size:22px; }.mk-selected-info p { margin:6px 0 0; color:#655e54; font-size:16px; line-height:1.5; }
+.mk-option-banner { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-top:20px; padding:12px; background:#eef3eb; border-radius:9px; }.mk-option-banner strong { font-size:18px; }.mk-option-banner span { font-size:13px; color:#5f6c5e; }.mk-selected-options { padding:11px 3px 0; font-size:15px; color:#6f665b; }.mk-selected-options strong { margin-left:8px; color:#30483a; }.mk-option-section { margin-top:16px; }.mk-option-section h3 { margin:0 0 9px; font-size:18px; }.mk-option-list { display:flex; flex-wrap:wrap; gap:8px; }.mk-option { min-height:48px; border:1px solid #d7d0c4; border-radius:9px; padding:10px 14px; background:#fff; color:#403b34; font-size:16px; font-weight:750; }.mk-option.is-active { border:2px solid #456b51; background:#eaf3e8; color:#264d35; }.mk-nutrition { margin-top:20px; border:1px solid #e4dbce; border-radius:10px; padding:12px; font-size:16px; }.mk-nutrition summary { min-height:32px; font-weight:800; cursor:pointer; }.mk-nutrition ul { padding-left:21px; line-height:1.7; }.mk-nutrition a { color:#355548; font-weight:800; }.mk-dialog-actions { display:grid; grid-template-columns:1fr 2fr; gap:10px; padding:12px 20px 20px; border-top:1px solid #ede6db; }
+.mk-large .mk-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.mk-large .mk-card { min-height:205px; }.mk-large .mk-card strong { font-size:23px; }.mk-large .mk-card-temp,.mk-large .mk-card-price,.mk-large .mk-tabs button,.mk-large .mk-search input { font-size:20px; }
+@media (max-width:700px) { .mk-header-row { grid-template-columns:auto 1fr; padding:10px 12px; }.mk-brand { justify-self:end; }.mk-brand small { display:none; }.mk-tools { grid-column:1 / -1; justify-content:stretch; }.mk-tools button { flex:1; }.mk-menu { padding:16px 12px; }.mk-cart { padding:14px 12px; }.mk-tabs { padding:0 6px; }.mk-tabs button { padding:10px 13px; font-size:16px; }.mk-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.mk-cart-layout { grid-template-columns:1fr; }.mk-cart-checkout { display:grid; grid-template-columns:1fr auto; align-items:center; }.mk-cart-checkout .mk-primary { grid-column:1/-1; }.mk-cart-item { gap:6px; }.mk-selected { flex-wrap:wrap; }.mk-selected-info { flex-basis:calc(100% - 115px); }.mk-selected>.mk-quantity { margin-left:auto; }.mk-option-banner { align-items:flex-start; flex-direction:column; gap:4px; }.mk-menu-title h1 { font-size:23px; }.mk-listen { padding:8px; font-size:14px; } }
+@media (max-width:380px) { .mk-grid { gap:7px; }.mk-card { min-height:160px; }.mk-card strong { font-size:15px; }.mk-cart-item { grid-template-columns:1fr auto; }.mk-cart-item>span { grid-column:1/-1; }.mk-dialog-body { padding:14px; }.mk-selected-art { width:74px; height:74px; }.mk-selected-art .mk-art { width:67px; height:67px; }.mk-selected-info { flex-basis:calc(100% - 94px); }.mk-selected-info h3 { font-size:19px; } }
+@media (prefers-reduced-motion:reduce) { .mk-page *, .mk-dialog * { transition:none !important; animation:none !important; } }
+
+/* Keep the whole menu photo inside its frame, including large source images. */
+.mk-card { min-height: 225px; }
+.mk-card-art, .mk-selected-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.mk-card-art { flex: 0 0 130px; width: 100%; height: 130px; min-height: 0; }
+.mk-selected-art { box-sizing: border-box; padding: 4px; }
+.mk-menu-photo {
+  display: block;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.mk-card .mk-new { position: static; align-self: center; margin-top: 5px; }
+.mk-card > strong { display: block; width: 100%; margin-top: 7px; }
+@media (max-width: 380px) {
+  .mk-card-art { flex-basis: 110px; height: 110px; }
+}
