@@ -87,9 +87,12 @@ function App() {
         <div className="header-tools"><button className="control-button" aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>가가 <span>{largeText ? '기본 크기' : '크게 보기'}</span></button><button className="control-button" aria-pressed={slow} onClick={() => setSlow(!slow)}><Icon name="volume" size={20}/><span>{slow ? '보통 속도' : '천천히 듣기'}</span></button></div>
       </header>
       <main className="kiosk-main"><section className="home-screen">
-        <div className="home-intro"><h1>주문을 시작해 주세요</h1><p>원하는 방법을 선택해 주세요.</p></div>
+        <div className="home-hero">
+          <div className="home-hero-copy"><span className="home-hero-brand">CAIFE COFFEE</span><h1>오늘 어떤 음료를<br/>드릴까요?</h1><p>편한 방법으로 주문해 주세요.</p></div>
+          <div className="home-hero-photo" aria-hidden="true">{items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE') && <img src={`/api/menu-images/${encodeURIComponent(items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE').id)}`} alt="" onError={(event) => { event.currentTarget.hidden = true; }}/>}</div>
+        </div>
         <div className="assistant-stage"><div className="mascot-halo"><Mascot/></div><div className="dialogue-card"><span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span><div className="dialogue-log" aria-live="polite">{messages.slice(-2).map((message, index) => <p key={index}>{message}</p>)}</div></div></div>
-        <div className="home-actions"><button className="voice-button" disabled aria-describedby="voice-help"><span className="action-icon"><Icon name="volume" size={27}/></span><span><strong>말하기</strong><small>음성 입력 준비 중</small></span></button><button className="menu-button" onClick={() => setScreen('menu')}><span className="action-icon"><Icon name="cup" size={27}/></span><span><strong>메뉴 보기</strong><small>직접 보고 선택할게요</small></span><Icon name="arrow" size={24}/></button></div>
+        <div className="home-actions"><button className="voice-button" disabled aria-describedby="voice-help"><span className="action-icon"><Icon name="volume" size={27}/></span><span><strong>말로 주문하기</strong><small>음성 입력 준비 중</small></span></button><button className="menu-button" onClick={() => setScreen('menu')}><span className="action-icon"><Icon name="cup" size={27}/></span><span><strong>메뉴 보기</strong><small>직접 보고 선택할게요</small></span><Icon name="arrow" size={24}/></button></div>
         <p id="voice-help" className="voice-help">음성 주문 준비 중 · 메뉴 보기로 주문해 주세요.</p>
         <button className="home-repeat" onClick={() => speak(messages[messages.length - 1])}><Icon name="volume" size={19}/> 안내 다시 듣기</button>
       </section></main>
