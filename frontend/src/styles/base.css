@@ -531,3 +531,20 @@ h1, h2, h3, p { margin: 0; }
 .kiosk-shell.is-home > .kiosk-header .logo-text, .kiosk-shell.is-home > .kiosk-header .logo-text span { color: #fff; }
 .kiosk-shell.is-home > .kiosk-header .control-button { border-color: #a9beb1; color: #fff; }
 .kiosk-shell.is-home > .kiosk-header .control-button:hover, .kiosk-shell.is-home > .kiosk-header .control-button[aria-pressed='true'] { background: #fff; color: #324c40; }
+
+/* 처음으로 돌아갈 때 주문 초기화를 명확하게 안내합니다. */
+.home-reset-dialog { padding: 30px; }
+.home-reset-dialog h2 { color: #243c30; font-size: 30px; line-height: 1.3; }
+.home-reset-dialog p { margin: 20px 0 26px; color: #2d302c; font-size: 23px; line-height: 1.5; font-weight: 700; }
+.home-reset-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.home-reset-actions button { min-height: 64px; padding: 12px; border: 2px solid #355548; border-radius: 8px; font-size: 20px; font-weight: 800; }
+.home-reset-cancel { background: #fff; color: #254336; }
+.home-reset-confirm { background: #355548; color: #fff; }
+.home-reset-confirm:hover { background: #294638; }
+.home-reset-cancel:hover { background: #ecf2ea; }
+@media (max-width: 480px) {
+  .home-reset-dialog { padding: 22px; }
+  .home-reset-dialog h2 { font-size: 25px; }
+  .home-reset-dialog p { font-size: 20px; }
+  .home-reset-actions { grid-template-columns: 1fr; }
+}

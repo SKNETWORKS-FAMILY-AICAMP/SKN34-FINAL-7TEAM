@@ -29,6 +29,31 @@ function Mascot() {
   </svg>;
 }
 
+
+function ResetOrderDialog({ onCancel, onConfirm }) {
+  const dialogRef = useRef(null);
+  const cancelRef = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    cancelRef.current?.focus();
+    const onKey = (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); onCancel(); return; }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const buttons = [...dialogRef.current.querySelectorAll('button:not(:disabled)')];
+      if (!buttons.length) return;
+      if (event.shiftKey && document.activeElement === buttons[0]) { event.preventDefault(); buttons[buttons.length - 1].focus(); }
+      else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) { event.preventDefault(); buttons[0].focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); previous?.focus?.(); };
+  }, [onCancel]);
+  return <div className="modal-backdrop"><section className="review-modal home-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="home-reset-title" aria-describedby="home-reset-description" ref={dialogRef}>
+    <h2 id="home-reset-title">처음으로 돌아갈까요?</h2>
+    <p id="home-reset-description">처음으로 돌아가면 선택한 메뉴가 모두 삭제돼요.</p>
+    <div className="home-reset-actions"><button ref={cancelRef} className="home-reset-cancel" onClick={onCancel}>계속 주문하기</button><button className="home-reset-confirm" onClick={onConfirm}>지우고 처음으로</button></div>
+  </section></div>;
+}
+
 function App() {
   const [items, setItems] = useState([]);
   const [loadState, setLoadState] = useState('loading');
@@ -37,6 +62,7 @@ function App() {
   const [cart, setCart] = useState([]);
   const [dining, setDining] = useState(null);
   const [checkout, setCheckout] = useState(false);
+  const [confirmHome, setConfirmHome] = useState(false);
   const [largeText, setLargeText] = useState(false);
   const [slow, setSlow] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -73,6 +99,21 @@ function App() {
     window.speechSynthesis.speak(utterance);
   }, [slow]);
   const stopSpeech = () => { speechRef.current = null; window.speechSynthesis?.cancel(); setSpeaking(false); setAudioStatus('음성 안내를 멈췄어요.'); };
+  const cancelHome = useCallback(() => setConfirmHome(false), []);
+  const resetAndGoHome = () => {
+    speechRef.current = null;
+    window.speechSynthesis?.cancel();
+    setSpeaking(false);
+    setAudioStatus('');
+    setCart([]);
+    setDining(null);
+    setConfirmHome(false);
+    setScreen('home');
+  };
+  const requestHome = () => {
+    if (cart.length > 0) setConfirmHome(true);
+    else resetAndGoHome();
+  };
   const updateHomeQuantity = (lineId, delta) => setCart((current) => current.flatMap((item) => {
     if ((item.lineId || item.id) !== lineId) return [item];
     return item.quantity + delta > 0 ? [{ ...item, quantity: item.quantity + delta }] : [];
@@ -96,7 +137,8 @@ function App() {
         <button className="home-repeat" onClick={() => speak('안녕하세요 제가 도와드릴게요!')}><Icon name="volume" size={19}/> 안내 다시 듣기</button>
       </section></main>
       {cart.length > 0 && <section className="cart-bar" aria-label="주문 목록"><div className="cart-head"><div><span className="cart-icon"><Icon name="bag" size={21}/></span><strong>주문 목록</strong><span className="cart-count">{cart.reduce((sum, item) => sum + item.quantity, 0)}개</span></div><button className="clear-button" disabled={!cart.length} onClick={() => { setCart([]); speak('주문 목록을 비웠어요.'); }}>전체 비우기</button></div><div className="cart-content"><div className="cart-items">{cart.length === 0 ? <p className="cart-empty">선택한 메뉴가 여기에 보여요.</p> : cart.map((item) => <div className="cart-item" key={item.lineId || item.id}><div className="cart-item-copy"><strong>{item.name}</strong><span>{item.quantity}개 · {typeof item.price === 'number' ? `${item.price.toLocaleString('ko-KR')}원` : '가격 미확인'}</span></div><div className="cart-item-controls"><button className="qty-button" aria-label={`${item.name} 한 개 줄이기`} onClick={() => updateHomeQuantity(item.lineId || item.id, -1)}>−</button><span>{item.quantity}</span><button className="qty-button" aria-label={`${item.name} 한 개 추가`} onClick={() => updateHomeQuantity(item.lineId || item.id, 1)}>＋</button></div></div>)}</div><div className="cart-summary"><div className="cart-total"><span>주문 금액</span><strong>{cart.length && cart.every((item) => typeof item.price === 'number') ? `${cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString('ko-KR')}원` : '총액 미확인'}</strong></div><button className="checkout-button" disabled={!cart.length} onClick={() => setCheckout(true)}>주문 확인 <Icon name="arrow" size={22}/></button></div></div></section>}
-    </> : <MenuKiosk items={items} loadState={loadState} onRetry={() => setRetryKey((n) => n + 1)} cart={cart} setCart={setCart} speak={speak} onHome={() => setScreen('home')} onCheckout={() => setCheckout(true)} largeText={largeText} setLargeText={setLargeText} slow={slow} setSlow={setSlow} speaking={speaking} stopSpeech={stopSpeech} collectedAt={collectedAt}/>}
+    </> : <MenuKiosk items={items} loadState={loadState} onRetry={() => setRetryKey((n) => n + 1)} cart={cart} setCart={setCart} speak={speak} onHome={requestHome} onCheckout={() => setCheckout(true)} largeText={largeText} setLargeText={setLargeText} slow={slow} setSlow={setSlow} speaking={speaking} stopSpeech={stopSpeech} collectedAt={collectedAt}/>}
+    {confirmHome && <ResetOrderDialog onCancel={cancelHome} onConfirm={resetAndGoHome}/>}
     <div className="speech-status" role="status">{audioStatus}</div>
     {checkout && <CheckoutFlow cart={cart} dining={dining} onDiningChange={setDining} onClose={() => setCheckout(false)} onComplete={() => { setCart([]); setDining(null); setCheckout(false); setScreen('home'); }} speak={speak}/>}
   </div>;
