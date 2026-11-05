@@ -30,9 +30,8 @@ function renderOptions(options) {
 }
 
 /** Local-only demonstration: no personal data, transactions, or backend requests. */
-export default function CheckoutFlow({ cart, onClose, onComplete, speak }) {
+export default function CheckoutFlow({ cart, dining, onDiningChange, onClose, onComplete, speak }) {
   const [step, setStep] = useState('review');
-  const [dining, setDining] = useState(null);
   const [supplies, setSupplies] = useState([]);
   const [discount, setDiscount] = useState('none');
   const [payment, setPayment] = useState(null);
@@ -67,7 +66,7 @@ export default function CheckoutFlow({ cart, onClose, onComplete, speak }) {
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  const chooseDining = (choice) => { setDining(choice); go('supplies'); };
+  const chooseDining = (choice) => { onDiningChange(choice); go('supplies'); };
   const toggleSupply = (key) => setSupplies((current) => {
     if (key === 'self') return current.includes('self') ? [] : ['self'];
     const next = current.filter((entry) => entry !== 'self');
@@ -83,7 +82,7 @@ export default function CheckoutFlow({ cart, onClose, onComplete, speak }) {
       </header>
       <div className="ck-content">
         {step === 'review' && <>
-          <p className="ck-help">선택하신 메뉴를 확인하고 이용 방법을 골라 주세요.</p>
+          <p className="ck-help">선택하신 메뉴와 이용 방법을 확인해 주세요.</p>
           <div className="ck-order-list">{cart.map((item) => {
             const options = renderOptions(item.selectedOptions);
             return <div className="ck-order-row" key={item.lineId || item.id}>
@@ -92,7 +91,7 @@ export default function CheckoutFlow({ cart, onClose, onComplete, speak }) {
             </div>;
           })}</div>
           <div className="ck-total"><span>총 {count}개</span><strong>{total}</strong></div>
-          <div className="ck-choice-grid"><button className="ck-choice" onClick={() => chooseDining('매장 이용')}><strong>매장에서 먹고 가요</strong><span>매장 이용</span></button><button className="ck-choice ck-primary" onClick={() => chooseDining('포장')}><strong>가지고 갈게요</strong><span>포장</span></button></div>
+          {dining ? <><div className="ck-summary"><p><span>이용 방법</span><strong>{dining}</strong></p></div><div className="ck-actions"><button className="ck-secondary" onClick={() => onDiningChange(null)}>이용 방법 변경</button><button className="ck-primary" onClick={() => go('supplies')}>다음</button></div></> : <div className="ck-choice-grid"><button className="ck-choice" onClick={() => chooseDining('매장 이용')}><strong>매장에서 먹고 가요</strong><span>매장 이용</span></button><button className="ck-choice ck-primary" onClick={() => chooseDining('포장')}><strong>가지고 갈게요</strong><span>포장</span></button></div>}
           <button className="ck-text-button" onClick={onClose}>메뉴로 돌아가기</button>
         </>}
 

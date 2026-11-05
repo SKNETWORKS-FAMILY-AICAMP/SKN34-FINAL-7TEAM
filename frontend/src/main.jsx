@@ -9,6 +9,7 @@ function Icon({ name, size = 24 }) {
     cup: <><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8ZM17 9h1.5a2.5 2.5 0 0 1 0 5H17M3 21h16M8 3v2M12 3v2"/></>,
     volume: <><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></>,
     arrow: <path d="M5 12h14M14 7l5 5-5 5"/>,
+    store: <><path d="M3 10h18l-2-6H5l-2 6ZM5 10v10h14V10M9 20v-6h6v6"/><path d="M3 10c0 2 3 3 4.5 1 1.5 2 3 2 4.5 0 1.5 2 3 2 4.5 0 1.5 2 4.5 1 4.5-1"/></>,
     bag: <><path d="M5 8h14l1 12H4L5 8ZM9 9V6a3 3 0 0 1 6 0v3"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
@@ -33,8 +34,8 @@ function App() {
   const [loadState, setLoadState] = useState('loading');
   const [retryKey, setRetryKey] = useState(0);
   const [screen, setScreen] = useState('home');
-  const [messages, setMessages] = useState(['안녕하세요! 메뉴를 함께 골라드릴게요.']);
   const [cart, setCart] = useState([]);
+  const [dining, setDining] = useState(null);
   const [checkout, setCheckout] = useState(false);
   const [largeText, setLargeText] = useState(false);
   const [slow, setSlow] = useState(false);
@@ -57,7 +58,6 @@ function App() {
   }, [retryKey]);
 
   const speak = useCallback((message) => {
-    setMessages((current) => [...current.slice(-3), message]);
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
       setAudioStatus('음성 안내를 사용할 수 없어요. 화면의 글자를 확인해 주세요.'); return;
     }
@@ -88,18 +88,20 @@ function App() {
       </header>
       <main className="kiosk-main"><section className="home-screen">
         <div className="home-hero">
-          <div className="home-hero-copy"><span className="home-hero-brand">CAIFE COFFEE</span><h1>오늘 어떤 음료를 드릴까요?</h1><p>편한 방법으로 주문해 주세요.</p></div>
           <div className="home-hero-photo" aria-hidden="true">{items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE') && <img src={`/api/menu-images/${encodeURIComponent(items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE').id)}`} alt="" onError={(event) => { event.currentTarget.hidden = true; }}/>}</div>
         </div>
-        <div className="assistant-stage"><div className="mascot-halo"><Mascot/></div><div className="dialogue-card"><span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span><div className="dialogue-log" aria-live="polite">{messages.slice(-2).map((message, index) => <p key={index}>{message}</p>)}</div></div></div>
-        <div className="home-actions"><button className="voice-button" disabled aria-describedby="voice-help"><span className="action-icon"><Icon name="volume" size={27}/></span><span><strong>말로 주문하기</strong><small>음성 입력 준비 중</small></span></button><button className="menu-button" onClick={() => setScreen('menu')}><span className="action-icon"><Icon name="cup" size={27}/></span><span><strong>메뉴 보기</strong><small>직접 보고 선택할게요</small></span><Icon name="arrow" size={24}/></button></div>
-        <p id="voice-help" className="voice-help">음성 주문 준비 중 · 메뉴 보기로 주문해 주세요.</p>
-        <button className="home-repeat" onClick={() => speak(messages[messages.length - 1])}><Icon name="volume" size={19}/> 안내 다시 듣기</button>
+        <div className="assistant-stage"><div className="mascot-halo"><Mascot/></div><div className="dialogue-card"><span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span><div className="dialogue-log" aria-live="polite"><p>안녕하세요 제가 도와드릴게요!</p></div></div></div>
+        <div className="home-actions">
+          <button className="dining-button store-button" onClick={() => { setDining('매장 이용'); setScreen('menu'); }}><span className="dining-icon"><Icon name="store" size={42}/></span><strong>매장</strong><small>매장에서 먹고 갈게요</small></button>
+          <button className="dining-button takeaway-button" onClick={() => { setDining('포장'); setScreen('menu'); }}><span className="dining-icon"><Icon name="bag" size={42}/></span><strong>포장</strong><small>가지고 갈게요</small></button>
+        </div>
+        <p className="voice-help">음성 주문 준비 중</p>
+        <button className="home-repeat" onClick={() => speak('안녕하세요 제가 도와드릴게요!')}><Icon name="volume" size={19}/> 안내 다시 듣기</button>
       </section></main>
       {cart.length > 0 && <section className="cart-bar" aria-label="주문 목록"><div className="cart-head"><div><span className="cart-icon"><Icon name="bag" size={21}/></span><strong>주문 목록</strong><span className="cart-count">{cart.reduce((sum, item) => sum + item.quantity, 0)}개</span></div><button className="clear-button" disabled={!cart.length} onClick={() => { setCart([]); speak('주문 목록을 비웠어요.'); }}>전체 비우기</button></div><div className="cart-content"><div className="cart-items">{cart.length === 0 ? <p className="cart-empty">선택한 메뉴가 여기에 보여요.</p> : cart.map((item) => <div className="cart-item" key={item.lineId || item.id}><div className="cart-item-copy"><strong>{item.name}</strong><span>{item.quantity}개 · {typeof item.price === 'number' ? `${item.price.toLocaleString('ko-KR')}원` : '가격 미확인'}</span></div><div className="cart-item-controls"><button className="qty-button" aria-label={`${item.name} 한 개 줄이기`} onClick={() => updateHomeQuantity(item.lineId || item.id, -1)}>−</button><span>{item.quantity}</span><button className="qty-button" aria-label={`${item.name} 한 개 추가`} onClick={() => updateHomeQuantity(item.lineId || item.id, 1)}>＋</button></div></div>)}</div><div className="cart-summary"><div className="cart-total"><span>주문 금액</span><strong>{cart.length && cart.every((item) => typeof item.price === 'number') ? `${cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString('ko-KR')}원` : '총액 미확인'}</strong></div><button className="checkout-button" disabled={!cart.length} onClick={() => setCheckout(true)}>주문 확인 <Icon name="arrow" size={22}/></button></div></div></section>}
     </> : <MenuKiosk items={items} loadState={loadState} onRetry={() => setRetryKey((n) => n + 1)} cart={cart} setCart={setCart} speak={speak} onHome={() => setScreen('home')} onCheckout={() => setCheckout(true)} largeText={largeText} setLargeText={setLargeText} slow={slow} setSlow={setSlow} speaking={speaking} stopSpeech={stopSpeech} collectedAt={collectedAt}/>}
     <div className="speech-status" role="status">{audioStatus}</div>
-    {checkout && <CheckoutFlow cart={cart} onClose={() => setCheckout(false)} onComplete={() => { setCart([]); setCheckout(false); setScreen('home'); }} speak={speak}/>}
+    {checkout && <CheckoutFlow cart={cart} dining={dining} onDiningChange={setDining} onClose={() => setCheckout(false)} onComplete={() => { setCart([]); setDining(null); setCheckout(false); setScreen('home'); }} speak={speak}/>}
   </div>;
 }
 

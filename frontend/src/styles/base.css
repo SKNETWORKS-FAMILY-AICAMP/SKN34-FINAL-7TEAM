@@ -441,3 +441,41 @@ h1, h2, h3, p { margin: 0; }
 .is-home .home-hero-photo img { opacity: .28; mix-blend-mode: multiply; }
 
 .is-home .home-hero-photo { -webkit-mask-image: radial-gradient(ellipse, #000 30%, transparent 72%); mask-image: radial-gradient(ellipse, #000 30%, transparent 72%); }
+
+/* 시작화면: 안내와 이용 방법을 한 화면에서 명확하게 표시합니다. */
+.kiosk-shell.is-home, .is-home .home-screen, .is-home .speech-status { background: #fff; }
+.is-home > .kiosk-header { background: #fff; }
+.is-home > .kiosk-main { padding: 12px 30px 24px; }
+.is-home .home-screen { min-height: 0; max-width: 720px; }
+.is-home .assistant-stage { order: 0; width: 100%; max-width: 660px; margin: 10px 0 0; gap: 14px; text-align: left; }
+.is-home .mascot-halo, .is-home .caife-mascot { width: 105px; height: 105px; }
+.is-home .dialogue-label { font-size: 16px; color: #355548; }
+.is-home .dialogue-log p { font-size: clamp(24px, 3.6vw, 32px); line-height: 1.35; color: #1e3025; }
+.is-home .home-hero { order: 1; position: relative; width: 100%; height: 220px; flex: none; }
+.is-home .home-hero-photo { position: static; width: 100%; height: 100%; opacity: 1; mix-blend-mode: normal; -webkit-mask-image: none; mask-image: none; }
+.is-home .home-hero-photo img { width: 100%; height: 100%; opacity: 1; mix-blend-mode: normal; object-fit: contain; }
+.is-home .home-actions { order: 2; width: min(100%, 660px); margin: 8px 0 0; gap: 14px; }
+.is-home .dining-button { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 145px; gap: 5px; padding: 14px; border: 2px solid #315643; border-radius: 8px; text-align: center; }
+.is-home .store-button { background: #315643; color: #fff; }
+.is-home .store-button:hover { background: #223f31; }
+.is-home .takeaway-button { background: #e6efe5; color: #203d2d; }
+.is-home .takeaway-button:hover { background: #d4e5d3; }
+.is-home .dining-icon { display: grid; place-items: center; width: 45px; height: 45px; }
+.is-home .dining-button strong { font-size: 29px; line-height: 1.2; }
+.is-home .dining-button small { font-size: 17px; font-weight: 700; }
+.is-home .voice-help { order: 3; margin-top: 9px; font-size: 15px; }
+.is-home .home-repeat { order: 4; margin-top: 5px; }
+.is-home.large-text .dialogue-log p, .is-home.large-text .dining-button strong { font-size: 34px; }
+@media (max-width: 600px) {
+  .is-home > .kiosk-main { padding: 8px 16px 20px; }
+  .is-home .home-screen { min-height: 0; }
+  .is-home .assistant-stage { margin-top: 5px; gap: 8px; }
+  .is-home .mascot-halo, .is-home .caife-mascot { width: 76px; height: 76px; }
+  .is-home .dialogue-log p { font-size: 23px; }
+  .is-home .home-hero { height: 185px; }
+  .is-home .dining-button { min-height: 130px; padding: 10px 6px; }
+  .is-home .dining-button strong { font-size: 25px; }
+  .is-home .dining-button small { font-size: 14px; }
+}
+
+.is-home .home-hero-photo img { transform: scale(1.25); }
