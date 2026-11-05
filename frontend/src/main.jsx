@@ -79,7 +79,7 @@ function App() {
   }));
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
-  return <div className={`kiosk-shell${largeText ? ' large-text' : ''}`}>
+  return <div className={`kiosk-shell${screen === 'home' ? ' is-home' : ''}${largeText ? ' large-text' : ''}`}>
     {screen === 'home' ? <>
       <header className="kiosk-header">
         <div className="logo-mark"><Icon name="cup" size={25}/></div>
@@ -88,7 +88,7 @@ function App() {
       </header>
       <main className="kiosk-main"><section className="home-screen">
         <div className="home-hero">
-          <div className="home-hero-copy"><span className="home-hero-brand">CAIFE COFFEE</span><h1>오늘 어떤 음료를<br/>드릴까요?</h1><p>편한 방법으로 주문해 주세요.</p></div>
+          <div className="home-hero-copy"><span className="home-hero-brand">CAIFE COFFEE</span><h1>오늘 어떤 음료를 드릴까요?</h1><p>편한 방법으로 주문해 주세요.</p></div>
           <div className="home-hero-photo" aria-hidden="true">{items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE') && <img src={`/api/menu-images/${encodeURIComponent(items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE').id)}`} alt="" onError={(event) => { event.currentTarget.hidden = true; }}/>}</div>
         </div>
         <div className="assistant-stage"><div className="mascot-halo"><Mascot/></div><div className="dialogue-card"><span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span><div className="dialogue-log" aria-live="polite">{messages.slice(-2).map((message, index) => <p key={index}>{message}</p>)}</div></div></div>
