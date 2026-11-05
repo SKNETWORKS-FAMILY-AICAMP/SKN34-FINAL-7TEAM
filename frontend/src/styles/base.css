@@ -479,3 +479,59 @@ h1, h2, h3, p { margin: 0; }
 }
 
 .is-home .home-hero-photo img { transform: scale(1.25); }
+
+/* 안내를 넓고 크게 배치하고 커피 이미지를 배경 장식으로 표시합니다. */
+.is-home .home-screen {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "assistant" "actions" "voice" "repeat";
+  align-items: center;
+}
+.is-home .assistant-stage {
+  grid-area: assistant;
+  z-index: 1;
+  width: 100%;
+  max-width: none;
+  min-height: 260px;
+  margin: 0;
+  gap: 14px;
+}
+.is-home .mascot-halo, .is-home .caife-mascot { width: 200px; height: 200px; }
+.is-home .dialogue-card { flex: 1; min-width: 0; }
+.is-home .dialogue-label { font-size: 19px; }
+.is-home .dialogue-log p {
+  font-size: clamp(32px, 4vw, 40px);
+  line-height: 1.35;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+.is-home .home-hero {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  width: 140px;
+  height: 120px;
+  margin: 0;
+  pointer-events: none;
+}
+.is-home .home-hero-photo img { opacity: .85; transform: none; }
+.is-home .home-actions { grid-area: actions; z-index: 1; justify-self: center; width: 100%; margin: 8px 0 0; }
+.is-home .voice-help { grid-area: voice; z-index: 1; justify-self: center; }
+.is-home .home-repeat { grid-area: repeat; z-index: 1; justify-self: center; }
+.is-home.large-text .dialogue-log p { font-size: clamp(38px, 5vw, 48px); }
+.is-home.large-text .dialogue-label { font-size: 23px; }
+@media (max-width: 600px) {
+  .is-home .assistant-stage { min-height: 215px; gap: 8px; }
+  .is-home .mascot-halo, .is-home .caife-mascot { width: 145px; height: 145px; }
+  .is-home .dialogue-label { font-size: 17px; }
+  .is-home .dialogue-log p { font-size: 29px; }
+  .is-home .home-hero { right: 0; bottom: 0; width: 110px; height: 110px; }
+  .is-home.large-text .dialogue-log p { font-size: 34px; }
+}
+@media (max-width: 400px) {
+  .is-home .mascot-halo, .is-home .caife-mascot { width: 120px; height: 120px; }
+  .is-home .dialogue-log p { font-size: 25px; }
+}
