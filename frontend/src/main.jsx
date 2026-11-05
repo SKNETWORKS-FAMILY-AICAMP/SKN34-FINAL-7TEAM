@@ -87,9 +87,6 @@ function App() {
         <div className="header-tools"><button className="control-button" aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>가가 <span>{largeText ? '기본 크기' : '크게 보기'}</span></button><button className="control-button" aria-pressed={slow} onClick={() => setSlow(!slow)}><Icon name="volume" size={20}/><span>{slow ? '보통 속도' : '천천히 듣기'}</span></button></div>
       </header>
       <main className="kiosk-main"><section className="home-screen">
-        <div className="home-hero">
-          <div className="home-hero-photo" aria-hidden="true">{items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE') && <img src={`/api/menu-images/${encodeURIComponent(items.find((item) => item.name === '카페라떼' && item.temperature === 'ICE').id)}`} alt="" onError={(event) => { event.currentTarget.hidden = true; }}/>}</div>
-        </div>
         <div className="assistant-stage"><div className="mascot-halo"><Mascot/></div><div className="dialogue-card"><span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span><div className="dialogue-log" aria-live="polite"><p>안녕하세요 제가 도와드릴게요!</p></div></div></div>
         <div className="home-actions">
           <button className="dining-button store-button" onClick={() => { setDining('매장 이용'); setScreen('menu'); }}><span className="dining-icon"><Icon name="store" size={42}/></span><strong>매장</strong><small>매장에서 먹고 갈게요</small></button>

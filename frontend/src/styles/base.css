@@ -480,7 +480,7 @@ h1, h2, h3, p { margin: 0; }
 
 .is-home .home-hero-photo img { transform: scale(1.25); }
 
-/* 안내를 넓고 크게 배치하고 커피 이미지를 배경 장식으로 표시합니다. */
+/* 시작화면 안내를 넓고 크게 배치합니다. */
 .is-home .home-screen {
   position: relative;
   isolation: isolate;
@@ -507,17 +507,6 @@ h1, h2, h3, p { margin: 0; }
   overflow-wrap: break-word;
   word-break: keep-all;
 }
-.is-home .home-hero {
-  position: absolute;
-  z-index: 0;
-  right: 0;
-  bottom: 0;
-  width: 140px;
-  height: 120px;
-  margin: 0;
-  pointer-events: none;
-}
-.is-home .home-hero-photo img { opacity: .85; transform: none; }
 .is-home .home-actions { grid-area: actions; z-index: 1; justify-self: center; width: 100%; margin: 8px 0 0; }
 .is-home .voice-help { grid-area: voice; z-index: 1; justify-self: center; }
 .is-home .home-repeat { grid-area: repeat; z-index: 1; justify-self: center; }
@@ -528,10 +517,17 @@ h1, h2, h3, p { margin: 0; }
   .is-home .mascot-halo, .is-home .caife-mascot { width: 145px; height: 145px; }
   .is-home .dialogue-label { font-size: 17px; }
   .is-home .dialogue-log p { font-size: 29px; }
-  .is-home .home-hero { right: 0; bottom: 0; width: 110px; height: 110px; }
   .is-home.large-text .dialogue-log p { font-size: 34px; }
 }
 @media (max-width: 400px) {
   .is-home .mascot-halo, .is-home .caife-mascot { width: 120px; height: 120px; }
   .is-home .dialogue-log p { font-size: 25px; }
 }
+
+/* 시작화면 배경을 메뉴 화면과 같은 색으로 맞춥니다. */
+.kiosk-shell.is-home, .is-home .home-screen, .is-home .speech-status { background: #f5f3ee; }
+.kiosk-shell.is-home > .kiosk-header { background: #324c40; color: #fff; }
+.kiosk-shell.is-home > .kiosk-header .logo-mark { background: #e7eee4; color: #324c40; }
+.kiosk-shell.is-home > .kiosk-header .logo-text, .kiosk-shell.is-home > .kiosk-header .logo-text span { color: #fff; }
+.kiosk-shell.is-home > .kiosk-header .control-button { border-color: #a9beb1; color: #fff; }
+.kiosk-shell.is-home > .kiosk-header .control-button:hover, .kiosk-shell.is-home > .kiosk-header .control-button[aria-pressed='true'] { background: #fff; color: #324c40; }
