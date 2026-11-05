@@ -128,12 +128,21 @@ function App() {
         <div className="header-tools"><button className="control-button" aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>가가 <span>{largeText ? '기본 크기' : '크게 보기'}</span></button><button className="control-button" aria-pressed={slow} onClick={() => setSlow(!slow)}><Icon name="volume" size={20}/><span>{slow ? '보통 속도' : '천천히 듣기'}</span></button></div>
       </header>
       <main className="kiosk-main"><section className="home-screen">
-        <div className="assistant-stage"><div className="mascot-halo"><Mascot/></div><div className="dialogue-card"><span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span><div className="dialogue-log" aria-live="polite"><p>안녕하세요 제가 도와드릴게요!</p></div></div><button className="home-repeat" onClick={() => speak('안녕하세요 제가 도와드릴게요!')}><Icon name="volume" size={26}/> 안내 다시 듣기</button></div>
-        <div className="home-actions">
-          <button className="dining-button store-button" onClick={() => { setDining('매장 이용'); setScreen('menu'); }}><span className="dining-icon"><Icon name="store" size={42}/></span><strong>매장</strong><small>매장에서 먹고 갈게요</small></button>
-          <button className="dining-button takeaway-button" onClick={() => { setDining('포장'); setScreen('menu'); }}><span className="dining-icon"><Icon name="bag" size={42}/></span><strong>포장</strong><small>가지고 갈게요</small></button>
+        <div className="assistant-stage">
+          <div className="mascot-halo"><Mascot/></div>
+          <div className="dialogue-card">
+            <span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span>
+            <div className="dialogue-log" aria-live="polite"><p>원하시는 메뉴를 말씀하시면 제가 찾아드릴게요.</p></div>
+            <p className="home-voice-example">예: “달지 않은 커피 주세요”</p>
+            <p className="home-voice-status">음성 주문 준비 중 · 아래 버튼으로 주문해 주세요</p>
+          </div>
+          <button className="home-repeat" onClick={() => speak('원하시는 메뉴를 말씀하시면 제가 찾아드릴게요. 음성 주문은 준비 중입니다. 아래에서 매장이나 포장을 선택해 주세요.')}><Icon name="volume" size={26}/> 안내 듣기</button>
         </div>
-        <p className="voice-help">음성 주문 준비 중</p>
+        <h1 className="home-dining-question">어디에서 드실 건가요?</h1>
+        <div className="home-actions">
+          <button className="dining-button store-button" onClick={() => { setDining('매장 이용'); setScreen('menu'); }}><span className="dining-icon"><Icon name="store" size={42}/></span><strong>매장에서 먹기</strong></button>
+          <button className="dining-button takeaway-button" onClick={() => { setDining('포장'); setScreen('menu'); }}><span className="dining-icon"><Icon name="bag" size={42}/></span><strong>포장해서 가져가기</strong></button>
+        </div>
       </section></main>
       {cart.length > 0 && <section className="cart-bar" aria-label="주문 목록"><div className="cart-head"><div><span className="cart-icon"><Icon name="bag" size={21}/></span><strong>주문 목록</strong><span className="cart-count">{cart.reduce((sum, item) => sum + item.quantity, 0)}개</span></div><button className="clear-button" disabled={!cart.length} onClick={() => { setCart([]); speak('주문 목록을 비웠어요.'); }}>전체 비우기</button></div><div className="cart-content"><div className="cart-items">{cart.length === 0 ? <p className="cart-empty">선택한 메뉴가 여기에 보여요.</p> : cart.map((item) => <div className="cart-item" key={item.lineId || item.id}><div className="cart-item-copy"><strong>{item.name}</strong><span>{item.quantity}개 · {typeof item.price === 'number' ? `${item.price.toLocaleString('ko-KR')}원` : '가격 미확인'}</span></div><div className="cart-item-controls"><button className="qty-button" aria-label={`${item.name} 한 개 줄이기`} onClick={() => updateHomeQuantity(item.lineId || item.id, -1)}>−</button><span>{item.quantity}</span><button className="qty-button" aria-label={`${item.name} 한 개 추가`} onClick={() => updateHomeQuantity(item.lineId || item.id, 1)}>＋</button></div></div>)}</div><div className="cart-summary"><div className="cart-total"><span>주문 금액</span><strong>{cart.length && cart.every((item) => typeof item.price === 'number') ? `${cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString('ko-KR')}원` : '총액 미확인'}</strong></div><button className="checkout-button" disabled={!cart.length} onClick={() => setCheckout(true)}>주문 확인 <Icon name="arrow" size={22}/></button></div></div></section>}
     </> : <MenuKiosk items={items} loadState={loadState} onRetry={() => setRetryKey((n) => n + 1)} cart={cart} setCart={setCart} speak={speak} onHome={requestHome} onCheckout={() => setCheckout(true)} largeText={largeText} setLargeText={setLargeText} slow={slow} setSlow={setSlow} speaking={speaking} stopSpeech={stopSpeech} collectedAt={collectedAt}/>}
