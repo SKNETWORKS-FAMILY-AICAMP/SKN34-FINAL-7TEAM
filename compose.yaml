@@ -19,6 +19,7 @@ services:
     build: ./frontend
     environment:
       CAIFE_API_PROXY_TARGET: http://backend:8000
+      CAIFE_WATCH_POLLING: "true"
     ports:
       - "${CAIFE_FRONTEND_PORT:-5173}:5173"
     volumes:
