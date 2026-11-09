@@ -80,3 +80,12 @@
   .ck-actions { flex-wrap: wrap; }
   .ck-actions button { min-width: 100px; }
 }
+
+.ck-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 16px 20px 0; list-style: none; }
+.ck-progress li { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; color: #57534b; font-size: 15px; font-weight: 700; }
+.ck-progress li span { display: grid; place-items: center; flex: none; width: 27px; height: 27px; border-radius: 50%; background: #eee9df; color: #454139; }
+.ck-progress li.current { color: #193a29; }
+.ck-progress li.current span { background: #365744; color: #fff; }
+.ck-final-summary { margin-top: 16px; }
+.ck-error { margin: 18px 0 0; padding: 14px; border: 2px solid #a63d31; border-radius: 10px; color: #81291f; font-size: 18px; line-height: 1.5; }
+@media (max-width: 480px) { .ck-progress { padding: 12px 8px 0; } .ck-progress li { gap: 3px; font-size: 12px; } .ck-progress li span { width: 22px; height: 22px; } }

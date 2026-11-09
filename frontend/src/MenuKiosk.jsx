@@ -22,13 +22,7 @@ function MenuPhoto({ item }) {
 
 function OptionDialog({ item, onClose, onAdd, speak }) {
   const [quantity, setQuantity] = useState(1);
-  const [tumbler, setTumbler] = useState(false);
-  const [shot, setShot] = useState('기본');
-  const [sweet, setSweet] = useState('기본');
   const dialog = useRef(null);
-  const food = item.group === '푸드';
-  const coffee = item.categories?.some((category) => ['커피', '디카페인'].includes(category));
-  const selectedOptions = [tumbler ? '텀블러 사용' : null, coffee && shot !== '기본' ? shot : null, !food && sweet !== '기본' ? sweet : null].filter(Boolean);
   useEffect(() => {
     const previous = document.activeElement;
     dialog.current?.focus();
@@ -43,18 +37,18 @@ function OptionDialog({ item, onClose, onAdd, speak }) {
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); previous?.focus?.(); };
   }, [onClose]);
-  const toggle = (value, active, update) => { update(value); speak?.(`${value} 선택했어요.`); };
   return <div className="mk-backdrop"><section className="mk-dialog" role="dialog" aria-modal="true" aria-labelledby="mk-option-title" ref={dialog} tabIndex={-1}>
-    <header className="mk-dialog-heading"><div><span className="mk-eyebrow">메뉴 선택 · 옵션</span><h2 id="mk-option-title">선택한 메뉴를 확인해 주세요</h2></div><button className="mk-close" aria-label="메뉴 선택 닫기" onClick={onClose}>×</button></header>
+    <header className="mk-dialog-heading"><div><span className="mk-eyebrow">메뉴 선택 · 수량</span><h2 id="mk-option-title">선택한 메뉴를 확인해 주세요</h2></div><button className="mk-close" aria-label="메뉴 선택 닫기" onClick={onClose}>×</button></header>
     <div className="mk-dialog-body">
-      <div className="mk-selected"><div className="mk-selected-art"><MenuPhoto item={item}/></div><div className="mk-selected-info"><h3>{item.name}</h3><p>{priceText(item.price)}</p><p>{item.description_raw || '메뉴 설명이 없어요.'}</p></div><div className="mk-quantity" aria-label="수량 선택"><button aria-label="한 개 줄이기" disabled={quantity <= 1} onClick={() => setQuantity((q) => q - 1)}>−</button><strong aria-live="polite">{quantity}개</strong><button aria-label="한 개 추가" disabled={quantity >= 9} onClick={() => setQuantity((q) => q + 1)}>＋</button></div></div>
-      {!food && <><div className="mk-option-banner"><strong>원하는 옵션을 선택해 주세요</strong><span>옵션 내용은 연습용 예시입니다.</span></div><div className="mk-selected-options">선택한 옵션 <strong>{selectedOptions.length ? selectedOptions.join(' · ') : '없음'}</strong></div>
-      <section className="mk-option-section"><h3>텀블러 선택</h3><button className={`mk-option${tumbler ? ' is-active' : ''}`} aria-pressed={tumbler} onClick={() => { setTumbler(!tumbler); speak?.(!tumbler ? '텀블러 사용 선택했어요.' : '텀블러 사용을 취소했어요.'); }}>텀블러 사용</button></section>
-      {coffee && <section className="mk-option-section"><h3>샷 선택</h3><div className="mk-option-list">{['기본', '연하게', '샷 1개 추가', '샷 2개 추가'].map((value) => <button key={value} className={`mk-option${shot === value ? ' is-active' : ''}`} aria-pressed={shot === value} onClick={() => toggle(value, shot, setShot)}>{value}</button>)}</div></section>}
-      <section className="mk-option-section"><h3>당도 선택</h3><div className="mk-option-list">{['기본', '덜 달게', '더 달게'].map((value) => <button key={value} className={`mk-option${sweet === value ? ' is-active' : ''}`} aria-pressed={sweet === value} onClick={() => toggle(value, sweet, setSweet)}>{value}</button>)}</div></section></>}
+      <div className="mk-selected"><div className="mk-selected-art"><MenuPhoto item={item}/></div><div className="mk-selected-info"><h3>{item.name}</h3><p className="mk-unit-price">{priceText(item.price)} / 1개</p>{item.description_raw && <p>{item.description_raw}</p>}</div></div>
+      <section className="mk-option-section mk-quantity-section" aria-label="수량 선택">
+        <div><h3>몇 개를 담을까요?</h3><p>원하시는 수량을 선택해 주세요.</p></div>
+        <div className="mk-quantity"><button aria-label="한 개 줄이기" disabled={quantity <= 1} onClick={() => setQuantity((q) => q - 1)}>−</button><strong aria-live="polite">{quantity}개</strong><button aria-label="한 개 추가" disabled={quantity >= 9} onClick={() => setQuantity((q) => q + 1)}>＋</button></div>
+      </section>
+      <div className="mk-selected-total"><span>선택한 메뉴 금액</span><strong aria-live="polite">{priceText(isPriceKnown(item.price) ? item.price * quantity : null)}</strong></div>
       <details className="mk-nutrition"><summary>용량 · 영양정보 · 알레르기 보기</summary><ul><li>{item.serving_size_raw || '용량 정보 미확인'}</li><li>{item.calories_raw || '열량 정보 미확인'}</li><li>{item.sugar_raw || '당류 정보 미확인'}</li><li>{caffeineText(item)}</li><li>{allergyText(item.allergen_raw)}</li></ul>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">공식 메뉴 출처 보기</a>}</details>
     </div>
-    <footer className="mk-dialog-actions"><button className="mk-secondary" onClick={onClose}>취소</button><button className="mk-primary" onClick={() => onAdd(item, quantity, selectedOptions)}>주문 목록에 담기</button></footer>
+    <footer className="mk-dialog-actions"><button className="mk-secondary" onClick={onClose}>취소</button><button className="mk-primary" onClick={() => onAdd(item, quantity, [])}>주문 목록에 담기</button></footer>
   </section></div>;
 }
 
@@ -79,7 +73,7 @@ export default function MenuKiosk({ items = [], loadState, onRetry, cart = [], s
     setSelected(null); speak?.(`${item.name} ${quantity}개를 주문 목록에 담았어요. ${isPriceKnown(orderItem.price) ? `기본 가격은 ${priceText(orderItem.price)}이에요.` : '가격은 확인되지 않았어요.'}`);
   };
   const adjust = (lineId, delta) => setCart((current) => current.flatMap((entry) => { if (entry.lineId !== lineId) return [entry]; const quantity = entry.quantity + delta; return quantity > 0 ? [{ ...entry, quantity }] : []; }));
-  const openItem = (item) => { setSelected(item); speak?.(`${item.name}. ${tempText(item)} ${item.description_raw || '메뉴 설명은 없어요.'} ${priceText(item.price)}입니다.`); };
+  const openItem = (item) => { setSelected(item); speak?.('수량을 선택하고 주문 목록에 담아 주세요.'); };
   return <div className={`mk-page${largeText ? ' mk-large' : ''}`}>
     <header className="mk-header"><div className="mk-header-row"><button onClick={onHome} className="mk-home">← 처음으로</button><div className="mk-brand"><span>☕</span><strong>CAIFE</strong><small>함께 고르는 카페</small></div><div className="mk-tools"><button aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>{largeText ? '기본 크기' : '가가 크게 보기'}</button><button aria-pressed={slow} onClick={() => setSlow(!slow)}>{slow ? '보통 속도' : '천천히 듣기'}</button></div></div>
       <nav className="mk-tabs" aria-label="메뉴 분류">{categories.map((item) => <button key={item} aria-pressed={category === item} className={category === item ? 'is-active' : ''} onClick={() => { setCategory(item); setPage(1); }}>{item}</button>)}</nav></header>

@@ -2,12 +2,12 @@
 
 작은 글씨와 복잡한 화면이 어려운 고객이 음성과 쉬운 화면으로 카페 메뉴를 고르도록 돕는 키오스크 프로젝트입니다.
 
-현재 React + FastAPI 기반의 **주문 연습 화면**을 구현했습니다. 브라우저 음성 합성으로 안내를 듣고, 메뉴 검색·카테고리·크게 보기, 옵션 선택, 주문 목록과 결제 연습 흐름을 사용할 수 있습니다. 실제 주문·결제는 이뤄지지 않습니다. 음성 인식(STT)과 AI 대화 주문은 아직 구현하지 않았습니다.
+현재 React + FastAPI 기반의 메뉴 선택과 주문 저장 기능을 구현했습니다. 메뉴·수량, 매장 이용 방식, 일회용품 및 결제 방법을 선택하여 서버에 저장합니다. 서버는 메뉴 가격을 다시 계산하고 주문을 결제 대기 상태로 보관합니다. 결제 서비스, 매장 POS, 메뉴별 추가 옵션 및 음성 인식(STT)과 AI 대화 주문은 아직 연결되지 않았습니다.
 
 ## 주요 폴더
 
 - `frontend/src`: 첫 화면, 메뉴와 주문 화면, 음성 안내, 스타일
-- `backend/app`: 메뉴·이미지와 서버 상태 API
+- `backend/app`: 메뉴·이미지·주문 저장과 서버 상태 API
 - `backend/tests`: 백엔드 API 테스트
 - `scripts/mega`: 메가MGC커피 메뉴·이미지·지점 가격 수집기와 테스트
 - `data/menus/mega`: 로컬 수집 데이터와 이미지 (Git 추적 제외)
@@ -34,6 +34,12 @@ python scripts/mega/import_prices.py --workbook <가격입력엑셀경로> --men
 ```
 
 출처는 [메가MGC커피 공식 메뉴](https://www.mega-mgccoffee.com/menu/menu.php?category=1&menu_category1=1&menu_category2=1&page=1)와 [패스오더 고색산업단지점 메뉴](https://app.passorder.co.kr/normal/4d1abd73-c5bb-45d0-b787-ff341b9f84f9/menus)입니다. 가격과 이미지의 이용 범위는 해당 자료의 이용 조건을 따릅니다. 수집 방법과 저장 필드는 `scripts/mega/README.md` 및 `scripts/mega/README_images.md`를 참고하세요.
+
+## 주문 저장
+
+`POST /api/orders`는 메뉴 ID, 수량, 이용 방법, 일회용품, 결제 방법과 화면에 표시한 금액을 받아 서버의 메뉴 가격과 비교한 뒤 주문을 저장합니다. 동일한 요청 ID의 재시도는 기존 주문을 반환합니다. 주문은 SQLite에 `결제 대기` 상태로 저장되며 결제 승인이나 매장 POS 전송을 의미하지 않습니다.
+
+기본 저장 위치는 `data/orders/caife.sqlite3`이며, `CAIFE_ORDER_DB_FILE` 환경변수로 변경할 수 있습니다. Docker 실행 시 `data/orders` 폴더를 쓰기 볼륨으로 연결합니다. 메뉴 데이터와 주문 데이터는 Git에 포함하지 않습니다. 추가 옵션의 가격과 적용 규칙은 수집되지 않아 주문에 포함하지 않습니다.
 
 ## Docker로 실행하기
 
