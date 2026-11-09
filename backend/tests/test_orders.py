@@ -101,14 +101,14 @@ class OrderApiTests(unittest.TestCase):
 
     def test_ice_americano_options_are_priced_and_saved(self):
         items = json.loads(self.menus.read_text(encoding="utf-8"))
-        items += [{"id": "ice-americano", "name": "아메리카노", "temperature": "ICE", "price": 2000},
-                  {"id": "hot-americano", "name": "아메리카노", "temperature": "HOT", "price": 2000}]
+        items += [{"id": "ice-americano", "name": "아메리카노", "group": "음료", "categories": ["커피"], "temperature": "ICE", "price": 2000},
+                  {"id": "hot-americano", "name": "아메리카노", "group": "음료", "categories": ["커피"], "temperature": "HOT", "price": 2000}]
         self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
         menus = self.client.get("/api/menus").json()["items"]
         iced = next(item for item in menus if item["id"] == "ice-americano")
         hot = next(item for item in menus if item["id"] == "hot-americano")
         self.assertEqual(len(iced["option_groups"]), 4)
-        self.assertNotIn("option_groups", hot)
+        self.assertEqual([group["id"] for group in hot["option_groups"]], ["tumbler", "shot", "sweet", "topping"])
         request = {**self.order,
                    "items": [{"menu_id": "ice-americano", "quantity": 2,
                               "options": ["shot_1", "stevia"]},
@@ -124,9 +124,39 @@ class OrderApiTests(unittest.TestCase):
         self.assertEqual([x["id"] for x in result["items"][0]["selected_options"]], ["shot_1", "stevia"])
         self.assertEqual(self.count(), 1)
 
+    def test_common_options_follow_menu_category(self):
+        items = json.loads(self.menus.read_text(encoding="utf-8"))
+        items.extend([
+            {"id": "latte", "name": "카페라떼", "group": "음료", "categories": ["커피"], "price": 3500},
+            {"id": "decaf", "name": "디카페인 라떼", "group": "음료", "categories": ["디카페인"], "price": 4000},
+            {"id": "frozen", "name": "커피프라페", "group": "음료", "categories": ["스무디&프라페"], "price": 4200},
+            {"id": "tea", "name": "차", "group": "음료", "categories": ["티"], "price": 3000},
+            {"id": "juice", "name": "주스", "group": "음료", "categories": ["에이드&주스"], "price": 4500},
+            {"id": "dessert", "name": "빵", "group": "푸드", "categories": ["디저트"], "price": 3500},
+        ])
+        self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
+        menus = {item["id"]: item for item in self.client.get("/api/menus").json()["items"]}
+        for menu_id in ("latte", "decaf", "frozen"):
+            self.assertEqual([group["id"] for group in menus[menu_id]["option_groups"]],
+                             ["tumbler", "shot", "sweet", "topping"])
+        for menu_id in ("tea", "juice"):
+            self.assertEqual([group["id"] for group in menus[menu_id]["option_groups"]],
+                             ["tumbler", "sweet", "topping"])
+        self.assertEqual(menus["dessert"]["option_groups"], [])
+        request = {**self.order, "items": [{"menu_id": "latte", "quantity": 2, "options": ["shot_1"]}],
+                   "expected_total": 8200}
+        response = self.client.post("/api/orders", json=request)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["total"], 8200)
+        self.assertEqual(response.json()["items"][0]["unit_price"], 4100)
+        denied = {**self.order, "request_id": str(uuid4()),
+                  "items": [{"menu_id": "tea", "quantity": 1, "options": ["shot_1"]}],
+                  "expected_total": 3600}
+        self.assertEqual(self.client.post("/api/orders", json=denied).status_code, 400)
+
     def test_invalid_options_conflicting_group_and_false_total_are_rejected(self):
         items = json.loads(self.menus.read_text(encoding="utf-8"))
-        items.append({"id": "ice-americano", "name": "아메리카노", "temperature": "ICE", "price": 2000})
+        items.append({"id": "ice-americano", "name": "아메리카노", "group": "음료", "categories": ["커피"], "temperature": "ICE", "price": 2000})
         self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
         for menu_id, options, total, status in [
             ("coffee", ["shot_1"], 2600, 400),

@@ -26,9 +26,9 @@ def menu_data_file() -> Path:
     return Path(os.environ.get("CAIFE_MENU_DATA_FILE", str(default)))
 
 
-# Options and add-on prices supplied in the user's iced Americano reference image.
-# Other menus must not inherit these values without their own option data.
-ICED_AMERICANO_OPTIONS = [
+# CAIFE initial common option policy, using prices from the supplied reference image.
+# It is a project configuration, not a verified per-menu franchise option list.
+DRINK_OPTION_GROUPS = [
     {"id": "tumbler", "label": "텀블러 선택", "choices": [
         {"id": "tumbler", "label": "텀블러 사용", "price": 0},
     ]},
@@ -48,16 +48,20 @@ ICED_AMERICANO_OPTIONS = [
 
 
 def option_groups_for(item: dict) -> list:
-    if item.get("name", "").strip() == "아메리카노" and item.get("temperature") == "ICE":
-        return ICED_AMERICANO_OPTIONS
-    return []
+    if item.get("group") != "음료":
+        return []
+    categories = item.get("categories")
+    is_coffee = (
+        isinstance(categories, list) and any(category in ("커피", "디카페인") for category in categories)
+    ) or "커피" in str(item.get("name", ""))
+    return [group for group in DRINK_OPTION_GROUPS if group["id"] != "shot" or is_coffee]
 
 
 def public_menu_item(item: dict) -> dict:
     # Do not trust option definitions embedded in a separately supplied menu file.
     result = {key: value for key, value in item.items() if key != "option_groups"}
     groups = option_groups_for(item)
-    if groups:
+    if groups or item.get("group") == "푸드":
         result["option_groups"] = groups
     return result
 
