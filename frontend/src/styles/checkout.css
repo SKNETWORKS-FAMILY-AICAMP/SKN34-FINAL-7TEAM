@@ -89,3 +89,8 @@
 .ck-final-summary { margin-top: 16px; }
 .ck-error { margin: 18px 0 0; padding: 14px; border: 2px solid #a63d31; border-radius: 10px; color: #81291f; font-size: 18px; line-height: 1.5; }
 @media (max-width: 480px) { .ck-progress { padding: 12px 8px 0; } .ck-progress li { gap: 3px; font-size: 12px; } .ck-progress li span { width: 22px; height: 22px; } }
+
+.ck-step-badge { display: inline-grid; place-items: center; width: 30px; height: 30px; margin-right: 6px; border-radius: 50%; background: #365744; color: white !important; font-size: 16px !important; }
+.ck-select.ck-unavailable { color: #595959; background: #f2f2f2; cursor: not-allowed; opacity: 1; }
+.ck-select small { display: block; margin-top: 4px; font-size: 14px; font-weight: 500; }
+.ck-payment-status { margin: 10px 0 0; text-align: right; color: #534c43; font-size: 16px; }

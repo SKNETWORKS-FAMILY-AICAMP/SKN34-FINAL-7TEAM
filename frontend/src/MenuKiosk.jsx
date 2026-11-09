@@ -22,6 +22,15 @@ function MenuPhoto({ item }) {
 
 function OptionDialog({ item, onClose, onAdd, speak }) {
   const [quantity, setQuantity] = useState(1);
+  const [choices, setChoices] = useState({});
+  const groups = Array.isArray(item.option_groups) ? item.option_groups : [];
+  const selectedOptions = groups.flatMap((group) => {
+    const choice = group.choices.find((option) => option.id === choices[group.id]);
+    return choice ? [{ group_id: group.id, choice_id: choice.id, label: choice.label, price: choice.price }] : [];
+  });
+  const optionTotal = selectedOptions.reduce((sum, option) => sum + option.price, 0);
+  const unitPrice = isPriceKnown(item.price) ? item.price + optionTotal : null;
+  const chooseOption = (groupId, choiceId) => setChoices((previous) => ({ ...previous, [groupId]: previous[groupId] === choiceId ? null : choiceId }));
   const dialog = useRef(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -38,17 +47,31 @@ function OptionDialog({ item, onClose, onAdd, speak }) {
     return () => { document.removeEventListener('keydown', onKey); previous?.focus?.(); };
   }, [onClose]);
   return <div className="mk-backdrop"><section className="mk-dialog" role="dialog" aria-modal="true" aria-labelledby="mk-option-title" ref={dialog} tabIndex={-1}>
-    <header className="mk-dialog-heading"><div><span className="mk-eyebrow">메뉴 선택 · 수량</span><h2 id="mk-option-title">선택한 메뉴를 확인해 주세요</h2></div><button className="mk-close" aria-label="메뉴 선택 닫기" onClick={onClose}>×</button></header>
+    <header className="mk-dialog-heading"><div><span className="mk-eyebrow">메뉴 선택 · 옵션</span><h2 id="mk-option-title">선택한 메뉴를 확인해 주세요</h2></div><button className="mk-close" aria-label="메뉴 선택 닫기" onClick={onClose}>×</button></header>
     <div className="mk-dialog-body">
       <div className="mk-selected"><div className="mk-selected-art"><MenuPhoto item={item}/></div><div className="mk-selected-info"><h3>{item.name}</h3><p className="mk-unit-price">{priceText(item.price)} / 1개</p>{item.description_raw && <p>{item.description_raw}</p>}</div></div>
+      {groups.length > 0 && <div className="mk-options-area">
+        <div className="mk-option-banner"><strong>원하는 옵션을 선택해 주세요</strong><button className="mk-option-reset" type="button" onClick={() => setChoices({})}>옵션 초기화</button></div>
+        <p className="mk-option-instruction">선택하지 않으면 기본 메뉴로 담겨요.</p>
+        <div className="mk-selected-options" aria-live="polite"><span>선택한 옵션</span><strong>{selectedOptions.length ? selectedOptions.map((option) => option.label).join(' · ') : '선택 안 함'}</strong></div>
+        {groups.map((group) => <section className="mk-option-section" key={group.id} aria-label={group.label}>
+          <h3>{group.label}</h3>
+          <div className="mk-option-list">{group.choices.map((choice) => {
+            const active = choices[group.id] === choice.id;
+            return <button key={choice.id} type="button" className={`mk-option${active ? ' is-active' : ''}`} aria-pressed={active} onClick={() => chooseOption(group.id, choice.id)}>
+              <span>{active && <span aria-hidden="true">✓ </span>}{choice.label}</span><small>{choice.price > 0 ? `+${priceText(choice.price)}` : '추가금 없음'}</small>
+            </button>;
+          })}</div>
+        </section>)}
+      </div>}
       <section className="mk-option-section mk-quantity-section" aria-label="수량 선택">
         <div><h3>몇 개를 담을까요?</h3><p>원하시는 수량을 선택해 주세요.</p></div>
         <div className="mk-quantity"><button aria-label="한 개 줄이기" disabled={quantity <= 1} onClick={() => setQuantity((q) => q - 1)}>−</button><strong aria-live="polite">{quantity}개</strong><button aria-label="한 개 추가" disabled={quantity >= 9} onClick={() => setQuantity((q) => q + 1)}>＋</button></div>
       </section>
-      <div className="mk-selected-total"><span>선택한 메뉴 금액</span><strong aria-live="polite">{priceText(isPriceKnown(item.price) ? item.price * quantity : null)}</strong></div>
+      <div className="mk-selected-total"><span>선택한 메뉴 금액</span><strong aria-live="polite">{priceText(isPriceKnown(unitPrice) ? unitPrice * quantity : null)}</strong></div>
       <details className="mk-nutrition"><summary>용량 · 영양정보 · 알레르기 보기</summary><ul><li>{item.serving_size_raw || '용량 정보 미확인'}</li><li>{item.calories_raw || '열량 정보 미확인'}</li><li>{item.sugar_raw || '당류 정보 미확인'}</li><li>{caffeineText(item)}</li><li>{allergyText(item.allergen_raw)}</li></ul>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">공식 메뉴 출처 보기</a>}</details>
     </div>
-    <footer className="mk-dialog-actions"><button className="mk-secondary" onClick={onClose}>취소</button><button className="mk-primary" onClick={() => onAdd(item, quantity, [])}>주문 목록에 담기</button></footer>
+    <footer className="mk-dialog-actions"><button className="mk-secondary" onClick={onClose}>취소</button><button className="mk-primary" onClick={() => onAdd(item, quantity, selectedOptions)}>주문 목록에 담기</button></footer>
   </section></div>;
 }
 
@@ -66,13 +89,14 @@ export default function MenuKiosk({ items = [], loadState, onRetry, cart = [], s
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
   const total = cart.length && cart.every((item) => isPriceKnown(item.price)) ? priceText(cart.reduce((sum, item) => sum + item.price * item.quantity, 0)) : '총액 미확인';
   const addItem = (item, quantity, selectedOptions) => {
-    const lineId = `${item.id}:${JSON.stringify(selectedOptions)}`;
-    // Extra-option prices are not provided by the collected base price.
-    const orderItem = selectedOptions.length ? { ...item, price: null } : item;
-    setCart((current) => { const found = current.find((entry) => entry.lineId === lineId); return found ? current.map((entry) => entry.lineId === lineId ? { ...entry, quantity: entry.quantity + quantity } : entry) : [...current, { ...orderItem, lineId, quantity, selectedOptions }]; });
-    setSelected(null); speak?.(`${item.name} ${quantity}개를 주문 목록에 담았어요. ${isPriceKnown(orderItem.price) ? `기본 가격은 ${priceText(orderItem.price)}이에요.` : '가격은 확인되지 않았어요.'}`);
+    const options = [...selectedOptions].sort((a, b) => a.choice_id.localeCompare(b.choice_id));
+    const lineId = `${item.id}:${JSON.stringify(options.map((option) => option.choice_id))}`;
+    const optionPrice = options.reduce((sum, option) => sum + option.price, 0);
+    const orderItem = { ...item, basePrice: item.price, price: isPriceKnown(item.price) ? item.price + optionPrice : null };
+    setCart((current) => { const found = current.find((entry) => entry.lineId === lineId); return found ? current.map((entry) => entry.lineId === lineId ? { ...entry, quantity: Math.min(99, entry.quantity + quantity) } : entry) : [...current, { ...orderItem, lineId, quantity, selectedOptions: options }]; });
+    setSelected(null); speak?.(`${item.name} ${quantity}개를 주문 목록에 담았어요.`);
   };
-  const adjust = (lineId, delta) => setCart((current) => current.flatMap((entry) => { if (entry.lineId !== lineId) return [entry]; const quantity = entry.quantity + delta; return quantity > 0 ? [{ ...entry, quantity }] : []; }));
+  const adjust = (lineId, delta) => setCart((current) => current.flatMap((entry) => { if (entry.lineId !== lineId) return [entry]; const quantity = entry.quantity + delta; return quantity > 0 ? [{ ...entry, quantity: Math.min(99, quantity) }] : []; }));
   const openItem = (item) => { setSelected(item); speak?.('수량을 선택하고 주문 목록에 담아 주세요.'); };
   return <div className={`mk-page${largeText ? ' mk-large' : ''}`}>
     <header className="mk-header"><div className="mk-header-row"><button onClick={onHome} className="mk-home">← 처음으로</button><div className="mk-brand"><span>☕</span><strong>CAIFE</strong><small>함께 고르는 카페</small></div><div className="mk-tools"><button aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>{largeText ? '기본 크기' : '가가 크게 보기'}</button><button aria-pressed={slow} onClick={() => setSlow(!slow)}>{slow ? '보통 속도' : '천천히 듣기'}</button></div></div>
@@ -85,7 +109,7 @@ export default function MenuKiosk({ items = [], loadState, onRetry, cart = [], s
       </>}
     </main>
     <section className="mk-cart" aria-label="주문 목록"><div className="mk-cart-heading"><div><span className="mk-eyebrow">주문 목록</span><strong>고른 메뉴 {count}개</strong></div><div><button className="mk-cart-help" aria-expanded={compactHelp} onClick={() => setCompactHelp(!compactHelp)}>도움말</button><button className="mk-clear" disabled={!cart.length} onClick={() => { setCart([]); speak?.('주문 목록을 비웠어요.'); }}>전체 삭제</button></div></div>{compactHelp && <p className="mk-cart-tip">수량을 바꾸거나 주문 확인을 눌러주세요.</p>}
-      <div className="mk-cart-layout"><div className="mk-cart-list">{!cart.length ? <p className="mk-empty">원하는 메뉴를 선택해 주세요.</p> : cart.map((item) => <div className="mk-cart-item" key={item.lineId}><div className="mk-cart-name"><strong>{item.name}</strong><small>{[...(item.selectedOptions || [])].filter(Boolean).join(' · ') || '기본'}</small></div><div className="mk-quantity"><button aria-label={`${item.name} 한 개 줄이기`} onClick={() => adjust(item.lineId, -1)}>−</button><span>{item.quantity}개</span><button aria-label={`${item.name} 한 개 늘리기`} onClick={() => adjust(item.lineId, 1)}>＋</button></div><span>{priceText(item.price)}</span></div>)}</div><div className="mk-cart-checkout"><span>선택한 상품 {count}개</span><strong>{total}</strong><button className="mk-primary" disabled={!cart.length} onClick={onCheckout}>주문 확인하기 →</button></div></div>
+      <div className="mk-cart-layout"><div className="mk-cart-list">{!cart.length ? <p className="mk-empty">원하는 메뉴를 선택해 주세요.</p> : cart.map((item) => <div className="mk-cart-item" key={item.lineId}><div className="mk-cart-name"><strong>{item.name}</strong><small>{(item.selectedOptions || []).map((option) => option.label).filter(Boolean).join(' · ') || '기본'}</small></div><div className="mk-quantity"><button aria-label={`${item.name} 한 개 줄이기`} onClick={() => adjust(item.lineId, -1)}>−</button><span>{item.quantity}개</span><button aria-label={`${item.name} 한 개 늘리기`} onClick={() => adjust(item.lineId, 1)}>＋</button></div><span>{priceText(isPriceKnown(item.price) ? item.price * item.quantity : null)}</span></div>)}</div><div className="mk-cart-checkout"><span>선택한 상품 {count}개</span><strong>{total}</strong><button className="mk-primary" disabled={!cart.length} onClick={onCheckout}>주문 확인하기 →</button></div></div>
     </section>
     {selected && <OptionDialog key={selected.id} item={selected} onClose={closeSelected} onAdd={addItem} speak={speak}/>}
   </div>;

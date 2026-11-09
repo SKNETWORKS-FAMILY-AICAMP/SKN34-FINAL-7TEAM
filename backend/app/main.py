@@ -26,6 +26,42 @@ def menu_data_file() -> Path:
     return Path(os.environ.get("CAIFE_MENU_DATA_FILE", str(default)))
 
 
+# Options and add-on prices supplied in the user's iced Americano reference image.
+# Other menus must not inherit these values without their own option data.
+ICED_AMERICANO_OPTIONS = [
+    {"id": "tumbler", "label": "텀블러 선택", "choices": [
+        {"id": "tumbler", "label": "텀블러 사용", "price": 0},
+    ]},
+    {"id": "shot", "label": "샷 선택", "choices": [
+        {"id": "shot_light", "label": "연하게", "price": 0},
+        {"id": "shot_1", "label": "샷 1개 추가", "price": 600},
+        {"id": "shot_2", "label": "샷 2개 추가", "price": 1200},
+    ]},
+    {"id": "sweet", "label": "당도 선택", "choices": [
+        {"id": "stevia", "label": "저당 스테비아 추가", "price": 600},
+        {"id": "condensed_milk", "label": "연유 추가", "price": 700},
+    ]},
+    {"id": "topping", "label": "토핑 선택", "choices": [
+        {"id": "whipped_cream", "label": "휘핑 추가", "price": 500},
+    ]},
+]
+
+
+def option_groups_for(item: dict) -> list:
+    if item.get("name", "").strip() == "아메리카노" and item.get("temperature") == "ICE":
+        return ICED_AMERICANO_OPTIONS
+    return []
+
+
+def public_menu_item(item: dict) -> dict:
+    # Do not trust option definitions embedded in a separately supplied menu file.
+    result = {key: value for key, value in item.items() if key != "option_groups"}
+    groups = option_groups_for(item)
+    if groups:
+        result["option_groups"] = groups
+    return result
+
+
 @app.get("/api/menus")
 def get_menus() -> dict:
     """Return locally collected menu data; never substitute demonstration data."""
@@ -45,7 +81,7 @@ def get_menus() -> dict:
         ) from None
 
     return {
-        "items": items,
+        "items": [public_menu_item(item) for item in items],
         "collected_at": items[0].get("collected_at"),
         "source": items[0].get("source_url"),
     }
@@ -78,8 +114,7 @@ class OrderItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
     menu_id: str = Field(min_length=1, max_length=100)
     quantity: StrictInt = Field(ge=1, le=99)
-    # No verified option availability or pricing is in the current menu data.
-    options: list[str] = Field(default_factory=list, max_length=0)
+    options: list[str] = Field(default_factory=list, max_length=4)
 
 
 class OrderRequest(BaseModel):
@@ -93,9 +128,9 @@ class OrderRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_items_and_supplies(self):
-        ids = [item.menu_id for item in self.items]
-        if len(ids) != len(set(ids)):
-            raise ValueError("같은 메뉴는 수량을 합쳐서 보내 주세요.")
+        lines = [(item.menu_id, tuple(sorted(item.options))) for item in self.items]
+        if len(lines) != len(set(lines)):
+            raise ValueError("같은 메뉴와 옵션은 수량을 합쳐서 보내 주세요.")
         if len(self.supplies) != len(set(self.supplies)) or (
             "self" in self.supplies and len(self.supplies) > 1
         ):
@@ -144,9 +179,24 @@ def create_order(order: OrderRequest) -> dict:
                 price = item.get("price")
                 if type(price) is not int or price < 0:
                     raise HTTPException(status_code=400, detail="선택한 메뉴의 가격을 확인할 수 없어요.")
+                choices = {}
+                for group in option_groups_for(item):
+                    for choice in group["choices"]:
+                        choices[choice["id"]] = (group["id"], choice)
+                selected_groups = set()
+                selected_options = []
+                for option_id in requested.options:
+                    entry = choices.get(option_id)
+                    if not entry or entry[0] in selected_groups:
+                        raise HTTPException(status_code=400, detail="선택할 수 없는 옵션입니다.")
+                    group_id, choice = entry
+                    selected_groups.add(group_id)
+                    selected_options.append({"id": choice["id"], "label": choice["label"], "price": choice["price"]})
+                unit_price = price + sum(option["price"] for option in selected_options)
                 lines.append({"menu_id": requested.menu_id, "name": item["name"],
-                              "quantity": requested.quantity, "unit_price": price,
-                              "line_total": price * requested.quantity})
+                              "quantity": requested.quantity, "base_price": price,
+                              "selected_options": selected_options, "unit_price": unit_price,
+                              "line_total": unit_price * requested.quantity})
             total = sum(item["line_total"] for item in lines)
             if order.expected_total != total:
                 raise HTTPException(status_code=409, detail="메뉴 가격이 변경됐어요. 주문 금액을 다시 확인해 주세요.")

@@ -94,10 +94,62 @@ class OrderApiTests(unittest.TestCase):
             {"menu_id": "coffee", "quantity": 0},
             {"menu_id": "coffee", "quantity": -1},
             {"menu_id": "coffee", "quantity": True},
-            {"menu_id": "coffee", "quantity": 1, "options": ["샷 추가"]},
         ]:
             with self.subTest(item=item):
                 self.assertEqual(self.client.post("/api/orders", json={**self.order, "items": [item]}).status_code, 422)
+        self.assertEqual(self.count(), 0)
+
+    def test_ice_americano_options_are_priced_and_saved(self):
+        items = json.loads(self.menus.read_text(encoding="utf-8"))
+        items += [{"id": "ice-americano", "name": "아메리카노", "temperature": "ICE", "price": 2000},
+                  {"id": "hot-americano", "name": "아메리카노", "temperature": "HOT", "price": 2000}]
+        self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
+        menus = self.client.get("/api/menus").json()["items"]
+        iced = next(item for item in menus if item["id"] == "ice-americano")
+        hot = next(item for item in menus if item["id"] == "hot-americano")
+        self.assertEqual(len(iced["option_groups"]), 4)
+        self.assertNotIn("option_groups", hot)
+        request = {**self.order,
+                   "items": [{"menu_id": "ice-americano", "quantity": 2,
+                              "options": ["shot_1", "stevia"]},
+                             {"menu_id": "ice-americano", "quantity": 1, "options": []}],
+                   "expected_total": 8400}
+        response = self.client.post("/api/orders", json=request)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()
+        self.assertEqual(result["total"], 8400)
+        self.assertEqual(result["items"][0]["base_price"], 2000)
+        self.assertEqual(result["items"][0]["unit_price"], 3200)
+        self.assertEqual(result["items"][0]["line_total"], 6400)
+        self.assertEqual([x["id"] for x in result["items"][0]["selected_options"]], ["shot_1", "stevia"])
+        self.assertEqual(self.count(), 1)
+
+    def test_invalid_options_conflicting_group_and_false_total_are_rejected(self):
+        items = json.loads(self.menus.read_text(encoding="utf-8"))
+        items.append({"id": "ice-americano", "name": "아메리카노", "temperature": "ICE", "price": 2000})
+        self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
+        for menu_id, options, total, status in [
+            ("coffee", ["shot_1"], 2600, 400),
+            ("ice-americano", ["shot_1", "shot_2"], 3800, 400),
+            ("ice-americano", ["stevia", "condensed_milk"], 3300, 400),
+            ("ice-americano", ["stevia", "stevia"], 3200, 400),
+            ("ice-americano", ["shot_1"], 2000, 409),
+        ]:
+            with self.subTest(menu=menu_id, options=options):
+                request = {**self.order, "items": [{"menu_id": menu_id, "quantity": 1, "options": options}],
+                           "expected_total": total}
+                self.assertEqual(self.client.post("/api/orders", json=request).status_code, status)
+                self.assertEqual(self.count(), 0)
+
+    def test_unverified_option_definitions_from_menu_file_are_not_used(self):
+        items = json.loads(self.menus.read_text(encoding="utf-8"))
+        items[0]["option_groups"] = [{"id": "fake", "choices": [{"id": "fake", "price": -1000}]}]
+        self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
+        menu = self.client.get("/api/menus").json()["items"][0]
+        self.assertNotIn("option_groups", menu)
+        request = {**self.order, "items": [{"menu_id": "coffee", "quantity": 1, "options": ["fake"]}],
+                   "expected_total": 1000}
+        self.assertEqual(self.client.post("/api/orders", json=request).status_code, 400)
         self.assertEqual(self.count(), 0)
 
     def test_invalid_id_supplies_or_duplicate_menu_is_rejected(self):
