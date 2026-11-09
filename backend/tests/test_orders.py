@@ -136,12 +136,9 @@ class OrderApiTests(unittest.TestCase):
         ])
         self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
         menus = {item["id"]: item for item in self.client.get("/api/menus").json()["items"]}
-        for menu_id in ("latte", "decaf", "frozen"):
+        for menu_id in ("latte", "decaf", "frozen", "tea", "juice"):
             self.assertEqual([group["id"] for group in menus[menu_id]["option_groups"]],
                              ["tumbler", "shot", "sweet", "topping"])
-        for menu_id in ("tea", "juice"):
-            self.assertEqual([group["id"] for group in menus[menu_id]["option_groups"]],
-                             ["tumbler", "sweet", "topping"])
         self.assertEqual(menus["dessert"]["option_groups"], [])
         request = {**self.order, "items": [{"menu_id": "latte", "quantity": 2, "options": ["shot_1"]}],
                    "expected_total": 8200}
@@ -149,10 +146,38 @@ class OrderApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["total"], 8200)
         self.assertEqual(response.json()["items"][0]["unit_price"], 4100)
-        denied = {**self.order, "request_id": str(uuid4()),
-                  "items": [{"menu_id": "tea", "quantity": 1, "options": ["shot_1"]}],
-                  "expected_total": 3600}
-        self.assertEqual(self.client.post("/api/orders", json=denied).status_code, 400)
+        tea_order = {**self.order, "request_id": str(uuid4()),
+                     "items": [{"menu_id": "tea", "quantity": 2, "options": ["shot_1"]}],
+                     "expected_total": 7200}
+        tea_response = self.client.post("/api/orders", json=tea_order)
+        self.assertEqual(tea_response.status_code, 200, tea_response.text)
+        self.assertEqual(tea_response.json()["items"][0]["unit_price"], 3600)
+        self.assertEqual(tea_response.json()["total"], 7200)
+
+    def test_known_canned_drinks_have_no_options_and_reject_addons(self):
+        ids = ["8853a28ec06e1954e465", "2e6b54579f37b9c096f5",
+               "db7a60ef5ca79661e13e", "0acead61b4f25392fe42",
+               "e03f9ecdc7158033b271", "7ff23889065e4b89636d",
+               "6e2fe719f1f23be77d0e"]
+        items = json.loads(self.menus.read_text(encoding="utf-8"))
+        items.extend({"id": menu_id, "name": "캔 음료", "group": "음료", "price": 2000}
+                     for menu_id in ids)
+        self.menus.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
+        menus = {item["id"]: item for item in self.client.get("/api/menus").json()["items"]}
+        for menu_id in ids:
+            with self.subTest(menu_id=menu_id):
+                self.assertEqual(menus[menu_id]["option_groups"], [])
+                request = {**self.order, "request_id": str(uuid4()),
+                           "items": [{"menu_id": menu_id, "quantity": 1, "options": ["shot_1"]}],
+                           "expected_total": 2600}
+                self.assertEqual(self.client.post("/api/orders", json=request).status_code, 400)
+        self.assertEqual(self.count(), 0)
+        basic = {**self.order, "request_id": str(uuid4()),
+                 "items": [{"menu_id": ids[0], "quantity": 2, "options": []}],
+                 "expected_total": 4000}
+        response = self.client.post("/api/orders", json=basic)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["total"], 4000)
 
     def test_invalid_options_conflicting_group_and_false_total_are_rejected(self):
         items = json.loads(self.menus.read_text(encoding="utf-8"))

@@ -47,21 +47,30 @@ DRINK_OPTION_GROUPS = [
 ]
 
 
+# Seven current products identified as canned drinks by their product photographs.
+# The source metadata does not record packaging, so do not infer it from volume,
+# temperature, or a partial name; changing the catalog requires updating this list.
+CANNED_DRINK_IDS = frozenset({
+    "8853a28ec06e1954e465", "2e6b54579f37b9c096f5",
+    "db7a60ef5ca79661e13e", "0acead61b4f25392fe42",
+    "e03f9ecdc7158033b271", "7ff23889065e4b89636d",
+    "6e2fe719f1f23be77d0e",
+})
+
+
 def option_groups_for(item: dict) -> list:
-    if item.get("group") != "음료":
+    if item.get("group") != "음료" or item.get("id") in CANNED_DRINK_IDS:
         return []
-    categories = item.get("categories")
-    is_coffee = (
-        isinstance(categories, list) and any(category in ("커피", "디카페인") for category in categories)
-    ) or "커피" in str(item.get("name", ""))
-    return [group for group in DRINK_OPTION_GROUPS if group["id"] != "shot" or is_coffee]
+    # The kiosk's common choice set, including shots, is offered for all
+    # non-canned drinks. It is project policy, not verified franchise data.
+    return DRINK_OPTION_GROUPS
 
 
 def public_menu_item(item: dict) -> dict:
     # Do not trust option definitions embedded in a separately supplied menu file.
     result = {key: value for key, value in item.items() if key != "option_groups"}
     groups = option_groups_for(item)
-    if groups or item.get("group") == "푸드":
+    if groups or item.get("group") in ("푸드", "음료"):
         result["option_groups"] = groups
     return result
 
