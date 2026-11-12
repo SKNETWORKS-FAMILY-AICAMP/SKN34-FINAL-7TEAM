@@ -33,3 +33,6 @@ recordings/
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated training preprocessing outputs
+data/intents/processed/
