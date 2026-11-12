@@ -74,7 +74,7 @@ function OptionDialog({ item, onClose, onAdd, speak }) {
           </section>)}
         </> : <p className="mk-option-empty">이 메뉴는 선택할 추가 옵션이 없어요.<br/>기본 메뉴로 주문 목록에 담을 수 있어요.</p>}
       </div>
-      <details className="mk-nutrition"><summary>용량 · 영양정보 · 알레르기 보기</summary><ul><li>{item.serving_size_raw || '용량 정보 미확인'}</li><li>{item.calories_raw || '열량 정보 미확인'}</li><li>{item.sugar_raw || '당류 정보 미확인'}</li><li>{caffeineText(item)}</li><li>{allergyText(item.allergen_raw)}</li></ul>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">공식 메뉴 출처 보기</a>}</details>
+      <details className="mk-nutrition"><summary>용량 · 영양정보 · 알레르기 보기</summary><ul><li>{item.serving_size_raw || '용량 정보 미확인'}</li><li>{item.calories_raw || '열량 정보 미확인'}</li><li>{item.sugar_raw || '당류 정보 미확인'}</li><li>{caffeineText(item)}</li><li>{allergyText(item.allergen_raw)}</li></ul></details>
     </div>
     <footer className="mk-dialog-actions"><div className="mk-selected-total"><span>선택한 메뉴 금액</span><strong aria-live="polite">{priceText(isPriceKnown(unitPrice) ? unitPrice * quantity : null)}</strong></div><div className="mk-dialog-buttons"><button type="button" className="mk-secondary" onClick={onClose}>취소</button><button type="button" className="mk-primary" onClick={() => onAdd(item, quantity, selectedOptions)}>주문 목록에 담기</button></div></footer>
   </section></div>;
