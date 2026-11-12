@@ -36,3 +36,7 @@ Thumbs.db
 
 # Generated training preprocessing outputs
 data/intents/processed/
+
+# Local store details and generated dialogue data
+data/store/
+data/dialogue/processed/

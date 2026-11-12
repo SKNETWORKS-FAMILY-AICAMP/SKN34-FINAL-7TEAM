@@ -62,3 +62,45 @@ python scripts/preprocessing/vectorize_intents.py --input-dir data/intents/proce
 ```bash
 python -m unittest discover -s scripts/preprocessing -p test_prepare_menus.py -v
 ```
+
+
+## 4. 용량·영양·알레르기 정보 보강
+
+메뉴 정규화 스크립트는 `menu_facts`에 용량과 열량·당류·카페인·나트륨·단백질·포화지방·알레르기를 구조화합니다. 단위, 기준량, 원문, 출처, 확인 상태를 함께 보존합니다. 컵 용량을 실제 음료량으로 가정하지 않습니다. 알레르기 정보의 미기재는 성분이 없다는 의미가 아닙니다. 공식 설명에 원료 전환 등 조건이 있거나 단위가 이상한 값은 원문을 보존하고 검토 대상으로 표시합니다.
+
+기존 결과를 보존하고 보강 결과를 따로 만들려면 다음을 실행합니다.
+
+```bash
+python scripts/preprocessing/prepare_menus.py --input data/menus/mega/mega_menu.json --output-dir data/menus/mega/processed_v2
+```
+
+생성 자료는 제3자 원본에서 파생되므로 `data/menus/mega/`의 기존 Git 제외 규칙을 따릅니다. `menus.search.json`에는 원문과 확인 플래그가 함께 들어갑니다. 실제 답변 기능은 구조화된 필드와 상태·조건을 확인해 만들어야 하며, 검색 텍스트만으로 확답해서는 안 됩니다.
+
+## 5. 가상 매장 정보
+
+사용자가 제공한 시연용 화장실 위치, 남녀 동일 이용 정보, 따뜻한 물 안내, 영업시간은 로컬 `data/store/store.demo.json`에 저장합니다. 고객에게 안내할 값은 실제 매장의 민감한 운영정보로 대체하지 않습니다. 영업 요일과 휴무일은 아직 지정하지 않았습니다. 로컬 파일과 결과는 Git에 포함되지 않습니다.
+
+다른 환경에서는 `scripts/preprocessing/store.example.json`을 참고하여 직접 로컬 입력 파일을 만든 다음 다음 명령을 실행합니다.
+
+```bash
+python scripts/preprocessing/prepare_store.py --input data/store/store.demo.json --output data/store/store.facts.json
+```
+
+## 6. 문맥·복합 요청 평가 시나리오
+
+기존 단일 의도 576건과 TF-IDF 결과를 유지하면서, 영양·알레르기, 매장 안내, 따뜻한 물, 방언풍 텍스트, 문맥 참조, 복합 요청, 모호한 요청 등을 별도의 합성 시나리오로 만듭니다. 예상 행동은 실제 구현 완료를 의미하지 않습니다. 사투리 예시는 실제 지역 음성이나 STT 결과가 아닙니다.
+
+```bash
+python scripts/preprocessing/prepare_dialogue_scenarios.py --baseline-dir data/intents/processed --output-dir data/dialogue/processed
+python scripts/preprocessing/prepare_multilabel_dialogue.py --baseline-dir data/intents/processed --output-dir data/dialogue/processed
+```
+
+`dialogue_scenarios_manifest.json`에 규모, 분할, 중복 검사와 한계가 기록됩니다. 개발용 문장과 보류용 문장은 각각 별도로 보관합니다. 표현이나 의미까지 완전히 독립적이라는 뜻은 아닙니다.
+
+다중 의도 파일은 `dialogue_multilabel_train.jsonl`, `dialogue_multilabel_validation.jsonl`, `dialogue_multilabel_test.jsonl`입니다. 검증·시험 문장은 앞의 별도 평가 시나리오와 동일하므로 중복 합산하지 않습니다. 데이터는 합성 예시이며 학습 문장 수가 작아 실제 고객 성능을 대표하지 않습니다. 실제 분류 모델 학습 및 서비스 연결은 수행하지 않았습니다.
+
+검증은 다음 명령으로 실행합니다.
+
+```bash
+python -m unittest discover -s scripts/preprocessing -p "test_*.py" -v
+```

@@ -1,0 +1,8 @@
+{
+  "store_id": "CAIFE-virtual",
+  "restroom_location": "정문으로 나가서 오른쪽 건물 2층",
+  "restroom_passcode": "<고객 안내용 가상 값 입력>",
+  "warm_water_guidance": "따뜻한 물은 직원에게 문의해 주세요.",
+  "opens_at": "09:00",
+  "closes_at": "21:00"
+}
