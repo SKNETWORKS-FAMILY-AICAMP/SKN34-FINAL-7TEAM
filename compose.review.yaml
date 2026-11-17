@@ -1,0 +1,19 @@
+name: caife-review
+services:
+  review:
+    build:
+      context: ./review_app
+    environment:
+      CAIFE_PROJECT_ROOT: /app
+      CAIFE_REVIEW_DB: /app/review_data/reviews.sqlite3
+    ports:
+      - "127.0.0.1:${CAIFE_REVIEW_PORT:-8501}:8501"
+    volumes:
+      - ./data/intents/processed:/app/data/intents/processed:ro
+      - ./data/dialogue/processed:/app/data/dialogue/processed:ro
+      - caife_review_data:/app/review_data
+    restart: unless-stopped
+
+volumes:
+  caife_review_data:
+
