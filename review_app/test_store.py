@@ -40,6 +40,7 @@ class ReviewStoreTest(unittest.TestCase):
         exported = [json.loads(line) for line in store.approved_jsonl(rows, store.get_reviews()).splitlines()]
         self.assertEqual(len(exported), 1)
         self.assertEqual(exported[0]['question_id'], '0')
+        self.assertEqual(exported[0]['review_status'], '승인')
         self.assertEqual(exported[0]['original_split'], 'train')
 
     def test_existing_dataset_ids_are_unique(self):

@@ -104,3 +104,15 @@ python scripts/preprocessing/prepare_multilabel_dialogue.py --baseline-dir data/
 ```bash
 python -m unittest discover -s scripts/preprocessing -p "test_*.py" -v
 ```
+
+## 7. API 연결 전 질문 데이터 정리
+
+기존 단일 의도와 문맥·복합 의도 자료의 이름과 형식을 통일합니다. 결과 폴더가 이미 있으면 덮어쓰지 않으므로 새 경로를 지정합니다.
+
+```powershell
+python scripts/preprocessing/prepare_unified_intents.py --project-root . --output-dir data/intents/processed/unified_v1
+```
+
+현재 자료의 결과는 672건이며 학습·검증·시험 순서로 320·176·176건입니다. 문장 원문, ID, 원래 라벨, 대화 맥락 및 분할을 보존합니다. 정확히 같은 문장과 같은 그룹의 분할 간 중복을 검사하지만, 의미가 비슷한 문장까지 독립이라는 뜻은 아닙니다. 결과는 사람 검토 전 합성 초안입니다.
+
+질문 검토 화면에서 승인한 학습용 문항만 초안과 결합하는 절차는 [승인 질문 처리 안내](README_approved.md)를 참고하세요. 변경한 질문은 의도 라벨을 확인할 때까지 별도 보관합니다.

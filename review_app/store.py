@@ -113,6 +113,7 @@ def approved_jsonl(rows, reviews):
             continue
         records.append(json.dumps({
             'question_id': item['key'], 'question_original': item['question'],
+            'review_status': review['status'],
             'question_approved': review['question'], 'expected_action': review['expected_action'],
             'expected_answer': review['expected_answer'], 'review_comment': review['comment'],
             'original_split': item['split'], 'group_id': item['group_id'],
