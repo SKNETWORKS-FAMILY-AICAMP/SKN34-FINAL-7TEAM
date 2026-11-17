@@ -8,6 +8,7 @@
 
 - `frontend/src`: 첫 화면, 메뉴와 주문 화면, 음성 안내, 스타일
 - `backend/app`: 메뉴·이미지·주문 저장과 서버 상태 API
+- `review_app`: 질문·예상 행동 검토와 사용자 평가 화면
 - `backend/tests`: 백엔드 API 테스트
 - `scripts/mega`: 메가MGC커피 메뉴·이미지·지점 가격 수집기와 테스트
 - `data/menus/mega`: 로컬 수집 데이터와 이미지 (Git 추적 제외)
@@ -43,13 +44,15 @@ python scripts/mega/import_prices.py --workbook <가격입력엑셀경로> --men
 
 ## Docker로 실행하기
 
-Docker Desktop을 실행한 상태에서 프로젝트 루트에서 다음을 실행합니다.
+Docker Desktop을 실행한 상태에서 프로젝트 루트에서 다음을 실행합니다. 첫 명령은 질문 검토 결과를 보관할 볼륨을 준비하며, 이미 존재하는 볼륨은 그대로 사용합니다.
 
 ```powershell
+docker volume create caife-review_caife_review_data
 docker compose up --build
 ```
 
 - 화면: http://localhost:5173
+- 질문 검토실: http://127.0.0.1:8501
 - API 상태: http://localhost:8000/api/health
 - 메뉴 API: http://localhost:8000/api/menus
 - API 문서: http://localhost:8000/docs

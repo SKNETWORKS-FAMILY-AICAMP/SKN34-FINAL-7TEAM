@@ -1,16 +1,17 @@
 # CAIFE 질문 검토실
 
-기존 합성 질문과 예상 행동을 살펴보고 사람이 평가하는 별도의 Streamlit 앱입니다.
+기존 합성 질문과 예상 행동을 살펴보고 사람이 평가하는 Streamlit 앱입니다. CAIFE의 다른 서비스와 같은 Docker Compose 구성으로 실행합니다.
 
 ## 실행
 
-프로젝트 루트에서 실행합니다.
+프로젝트 루트에서 최초 한 번 검토 데이터 볼륨을 준비합니다. 이미 볼륨이 있다면 기존 데이터를 그대로 사용합니다.
 
 ```powershell
-docker compose -f compose.review.yaml up -d --build
+docker volume create caife-review_caife_review_data
+docker compose up -d --build
 ```
 
-브라우저에서 http://127.0.0.1:8501 을 엽니다. 종료할 때는 `docker compose -f compose.review.yaml stop`을 사용합니다.
+브라우저에서 http://127.0.0.1:8501 을 엽니다. 검토 서비스만 시작하려면 `docker compose up -d --build review`, 검토 서비스만 중지하려면 `docker compose stop review`를 사용합니다.
 
 ## 데이터와 검토
 
