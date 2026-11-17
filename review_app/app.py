@@ -1,173 +1,288 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 import streamlit as st
+
 from store import ACTIONS, approved_jsonl, get_reviews, load_questions, save_review
 
-st.set_page_config(page_title='CAIFE 데이터 검토실', page_icon='☕', layout='wide', initial_sidebar_state='expanded')
-st.markdown('''<style>
-.stApp {background: #f5f7f5; color: #1c3027;}
-[data-testid="stSidebar"] {background: #173d2d;}
-[data-testid="stSidebar"] * {color: #fff !important;}
-[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] * {color: #20372c !important;}
-.block-container {max-width: 1440px; padding: 2rem 3rem;}
-h1, h2, h3 {color: #173d2d !important; letter-spacing: -.035em;}
-[data-testid="stMetric"] {background: white; border: 1px solid #e0e9e2; border-radius: 10px; padding: 16px 20px;}
-[data-testid="stMetricLabel"] {font-size: .95rem;}
-[data-testid="stMetricValue"] {font-weight: 700; color: #23543a;}
-.stButton > button, .stDownloadButton > button {border-radius: 8px; min-height: 45px; font-weight: 650;}
-.stButton > button[kind="primary"] {background: #23543a; border: 1px solid #23543a;}
-[data-testid="stAlert"] {border-radius: 8px;}
-</style>''', unsafe_allow_html=True)
+st.set_page_config(
+    page_title="CAIFE 질문 살펴보기",
+    page_icon="☕",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+st.markdown(
+    """
+    <style>
+    .stApp { background: #f6f8f5; color: #26392f; }
+    .block-container { max-width: 1100px; padding: 1.5rem 2.5rem 4rem; }
+    h1, h2, h3 { color: #183c2b !important; letter-spacing: -.03em; }
+    [data-testid="stMetric"] { background: #fff; border: 1px solid #e3ebe3;
+        border-radius: 12px; padding: 14px 20px; }
+    [data-testid="stMetricValue"] { color: #22533a; font-weight: 700; }
+    [data-testid="stVerticalBlockBorderWrapper"] { border-color: #dfe8df; }
+    .stButton > button, .stDownloadButton > button, .stFormSubmitButton > button {
+        min-height: 44px; border-radius: 8px; font-weight: 650;
+    }
+    .stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primary"] {
+        background: #24583c; border-color: #24583c;
+    }
+    [data-testid="stAlert"] { border-radius: 9px; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 rows, missing, errors = load_questions()
 try:
     reviews = get_reviews()
-except Exception as exc:
-    st.error(f'검토 저장소를 열 수 없습니다: {exc}')
+except (OSError, sqlite3.Error) as exc:
+    st.error(f"저장된 평가를 불러오지 못했어요: {exc}")
     st.stop()
 
-with st.sidebar:
-    st.markdown('## CAIFE')
-    st.caption('DATA OPERATIONS')
-    st.markdown('---')
-    st.markdown('### 질문 검토실')
-    st.write('주문 데이터를 검토하고 최종 결과를 저장합니다.')
-    st.markdown('---')
-    st.markdown('**담당 업무**')
-    st.markdown('① 질문 생성 담당  ·  연결 전')
-    st.markdown('② 행동 생성 담당  ·  연결 전')
-    st.markdown('③ 총괄 검토 담당  ·  연결 전')
-    st.markdown('④ 최종 평가  ·  사용자')
-    st.markdown('---')
-    st.caption('질문 자동 생성 및 정기 실행은 AI API 연결 후 구현합니다.')
+st.caption("CAIFE  /  질문 살펴보기")
+st.title("질문 살펴보기")
+st.write("질문과 키오스크의 처리 방법을 보고 괜찮은지 평가해 주세요.")
+st.caption("지금 보이는 질문은 미리 만든 예시예요. AI 자동 생성과 검토는 아직 연결되지 않았어요.")
 
-st.caption('CAIFE / 데이터 관리 / 질문 검토실')
-st.title('질문 검토실')
-st.write('현재 준비된 질문과 예상 행동을 살펴보고 직접 평가해 주세요.')
-st.info('기존 질문은 직접 작성한 합성 문장입니다. 아직 AI가 답변이나 검토 결과를 생성하지 않았습니다.')
-
-if missing:
-    with st.expander(f'불러오지 못한 데이터 파일 {len(missing)}개'):
-        st.write('전처리 결과 파일이 있으면 자동으로 표시됩니다.')
-        for path in missing:
-            st.code(path)
-if errors:
-    with st.expander(f'읽지 못한 데이터 행 {len(errors)}개'):
-        st.write(errors)
+if missing or errors:
+    with st.expander("불러오지 못한 자료 확인"):
+        if missing:
+            st.write(f"질문 파일 {len(missing)}개를 찾지 못했어요.")
+            for path in missing:
+                st.code(path)
+        if errors:
+            st.write(f"읽지 못한 항목이 {len(errors)}개 있어요.")
+            st.write(errors)
 if not rows:
-    st.warning('표시할 질문이 없습니다. 전처리 결과 파일을 준비해 주세요.')
+    st.warning("아직 볼 수 있는 질문이 없어요. 질문 데이터가 있는지 확인해 주세요.")
     st.stop()
 
-counts = {status: sum(1 for r in rows if reviews.get(r['key'], {}).get('status') == status) for status in ('승인', '수정 필요', '반려')}
-cols = st.columns(5)
-for column, label, value in zip(cols, ['전체 질문', '검토 전', '승인', '수정 필요', '반려'],
-                                 [len(rows), len(rows) - sum(counts.values()), counts['승인'], counts['수정 필요'], counts['반려']]):
-    column.metric(label, value)
+counts = {
+    status: sum(1 for row in rows if reviews.get(row["key"], {}).get("status") == status)
+    for status in ("승인", "수정 필요", "반려")
+}
+done = sum(counts.values())
+st.write(f"전체 질문 {len(rows)}개  ·  평가 완료 {done}개  ·  남은 질문 {len(rows) - done}개")
 
-st.divider()
-st.subheader('질문 목록')
-a, b, c, d = st.columns([2, 1.1, 1.1, 1.1])
-with a:
-    search = st.text_input('질문 검색', placeholder='메뉴명이나 질문을 입력하세요')
-with b:
-    datasets = ['전체'] + sorted({r['dataset'] for r in rows})
-    dataset = st.selectbox('데이터 종류', datasets)
-with c:
-    categories = ['전체'] + sorted({r['category'] for r in rows})
-    category = st.selectbox('질문 유형', categories)
-with d:
-    status = st.selectbox('검토 상태', ['전체', '검토 전', '승인', '수정 필요', '반려'])
+with st.expander("질문 찾기 · 전체 목록 보기"):
+    st.caption("검색하거나 원하는 질문을 목록에서 골라 볼 수 있어요.")
+    search_column, status_column = st.columns([2, 1])
+    with search_column:
+        search = st.text_input("질문 검색", placeholder="예: 아메리카노, 화장실")
+    with status_column:
+        status_filter = st.selectbox(
+            "평가 상태",
+            ["전체", "아직 평가 안 함", "승인", "수정 필요", "반려"],
+        )
+    cat_col, data_col = st.columns(2)
+    with cat_col:
+        category = st.selectbox("질문 종류", ["전체"] + sorted({r["category"] for r in rows}))
+    with data_col:
+        dataset = st.selectbox("자료 종류", ["전체"] + sorted({r["dataset"] for r in rows}))
 
-filtered = [r for r in rows
-    if (not search or search.casefold() in r['question'].casefold())
-    and (dataset == '전체' or dataset == r['dataset'])
-    and (category == '전체' or category == r['category'])
-    and (status == '전체' or status == reviews.get(r['key'], {}).get('status', '검토 전'))]
-st.caption(f'조건에 맞는 질문 {len(filtered)}건')
+    def matches(row):
+        state = reviews.get(row["key"], {}).get("status", "아직 평가 안 함")
+        return (
+            (not search or search.casefold() in row["question"].casefold()
+             or search.casefold() in reviews.get(row["key"], {}).get("question", "").casefold())
+            and (status_filter == "전체" or status_filter == state)
+            and (category == "전체" or category == row["category"])
+            and (dataset == "전체" or dataset == row["dataset"])
+        )
+
+    filtered = [row for row in rows if matches(row)]
+    # Show usable examples first, while keeping holdout examples last.
+    filtered.sort(key=lambda row: (
+        2 if row["split"] in ("test", "holdout")
+        else 0 if row["actions"] else 1
+    ))
+    st.caption(f"조건에 맞는 질문 {len(filtered)}개")
+
+    if filtered:
+        page_size = 25
+        pages = (len(filtered) + page_size - 1) // page_size
+        page = st.number_input("목록 페이지", min_value=1, max_value=pages, value=1, step=1)
+        current_page = filtered[(page - 1) * page_size : page * page_size]
+        st.dataframe(
+            [{
+                "질문": reviews.get(row["key"], {}).get("question", row["question"]),
+                "처리 방법": (
+                    reviews[row["key"]]["expected_action"] if row["key"] in reviews
+                    else " · ".join(ACTIONS.get(a, a) for a in row["actions"])
+                ) or "아직 없음",
+                "평가": reviews.get(row["key"], {}).get("status", "아직 안 함"),
+            } for row in current_page],
+            hide_index=True,
+            use_container_width=True,
+        )
+        st.caption(f"{page} / {pages} 페이지 · 한 페이지에 최대 25개")
+
+        keys = [row["key"] for row in filtered]
+        choices = {row["key"]: row for row in filtered}
+        if st.session_state.get("selected_question") not in choices:
+            # Prefer an existing action so the first question is immediately reviewable.
+            # Avoid revealing held-out questions when a development example is available.
+            st.session_state["selected_question"] = next(
+                (r["key"] for r in filtered
+                 if r["actions"] and r["split"] not in ("test", "holdout")
+                 and r["key"] not in reviews),
+                keys[0],
+            )
+        st.selectbox(
+            "살펴볼 질문 선택",
+            keys,
+            format_func=lambda key: reviews.get(key, {}).get("question", choices[key]["question"]),
+            key="selected_question",
+        )
+
 if not filtered:
-    st.warning('조건에 맞는 질문이 없습니다.')
+    st.warning("조건에 맞는 질문이 없어요. 검색어나 평가 상태를 바꿔 주세요.")
     st.stop()
 
-page_size = 25
-page_count = (len(filtered) + page_size - 1) // page_size
-page = st.number_input('목록 페이지', min_value=1, max_value=page_count, value=1, step=1)
-page_rows = filtered[(page - 1) * page_size : page * page_size]
-st.dataframe([{
-    '질문': r['question'], '유형': r['category'],
-    '기존 예상 행동': ' · '.join(ACTIONS.get(a, a) for a in r['actions']) or '없음',
-    '검토 상태': reviews.get(r['key'], {}).get('status', '검토 전'),
-    '분할': r['split'],
-} for r in page_rows], hide_index=True, use_container_width=True)
-st.caption(f'{page} / {page_count} 페이지 · 한 페이지당 최대 {page_size}건')
-
-# The selection presents actual utterances, rather than opaque generated IDs.
-choices = {r['key']: r for r in filtered}
-selected_key = st.selectbox('검토할 질문 선택', list(choices),
-    format_func=lambda key: f"[{reviews.get(key, {}).get('status', '검토 전')}] {choices[key]['question']}  ·  {choices[key]['category']}")
+# The selector remains the source of truth for both search and next/previous.
+selected_key = st.session_state["selected_question"]
 item = choices[selected_key]
 review = reviews.get(selected_key, {})
+position = keys.index(selected_key)
+shown_question = review.get("question", item["question"])
+original_action = "\n".join(ACTIONS.get(a, a) for a in item["actions"])
+shown_action = review["expected_action"] if review else original_action
 
-left, right = st.columns([1.05, 1], gap='large')
-with left:
-    st.markdown('### 질문 상세')
-    st.markdown(f"**질문**  \n{item['question']}")
-    st.write(f"**유형:** {item['category']}　 |　 **데이터:** {item['dataset']}")
-    st.write(f"**원본 분할:** {item['split']}　 |　 **문장 그룹:** {item['group_id']}")
-    if item['intent']:
-        st.write(f"**기존 의도:** {item['intent']}")
-    st.caption(f"출처: {item['source']}")
-    if item['split'] != 'train':
-        st.warning('검증·시험·보류용 질문입니다. 이 문항을 열람하거나 수정하면 독립적인 최종 평가에 영향을 줄 수 있습니다. 학습용 내보내기에는 포함되지 않습니다.')
-    if item['actions']:
-        st.markdown('**기존에 작성된 예상 행동**')
-        for action in item['actions']:
-            st.write('• ' + ACTIONS.get(action, action))
-    else:
-        st.caption('기존 예상 행동 없음 · 사용자가 작성할 수 있습니다.')
-    st.caption('기존 예상 행동은 설계 초안이며 AI의 실제 실행 결과가 아닙니다.')
-    if item['slots']:
-        st.markdown('**기존에 지정한 주문 정보**')
-        st.json(item['slots'], expanded=True)
-    if item['history'] or item['state']:
-        with st.expander('앞선 대화와 현재 주문 상황'):
-            if item['history']:
-                st.write('앞선 대화')
-                for turn in item['history']:
-                    st.write(f"{'고객' if turn.get('role') == 'user' else '안내'}: {turn.get('text', '')}")
-            if item['state']:
-                st.write('현재 상황')
-                st.json(item['state'], expanded=True)
-    st.markdown('**행동 담당 AI**　연결 전')
-    st.markdown('**총괄 검토 AI**　연결 전')
 
-with right:
-    st.markdown('### 최종 평가')
-    st.caption('질문과 예상 행동을 직접 수정하고 결과를 저장해 주세요.')
-    default_action = '\n'.join(ACTIONS.get(a, a) for a in item['actions'])
-    with st.form(key=f'review:{selected_key}'):
-        edited_question = st.text_area('질문', value=review.get('question', item['question']), height=100)
-        action = st.text_area('예상 행동', value=review.get('expected_action', default_action),
-                              placeholder='예: 메뉴를 확인하고 필요한 옵션을 질문합니다.', height=110)
-        answer = st.text_area('예상 안내 문구', value=review.get('expected_answer', ''),
-                              placeholder='예: 어떤 온도로 드릴까요? (필요한 경우 입력)', height=100)
-        comment = st.text_area('검토 의견', value=review.get('comment', ''), placeholder='수정 이유나 판단 근거를 남겨 주세요.', height=90)
-        decision = st.radio('최종 평가', ['승인', '수정 필요', '반려'],
-                            index=['승인', '수정 필요', '반려'].index(review.get('status', '승인')), horizontal=True)
-        submitted = st.form_submit_button('평가 저장', type='primary', use_container_width=True)
-    if submitted:
-        try:
-            save_review(selected_key, decision, edited_question, action, answer, comment)
-            st.success('평가를 저장했습니다.')
-            st.rerun()
-        except (ValueError, OSError, sqlite3.Error) as exc:
-            st.error(f'저장하지 못했습니다: {exc}')
+def move_question(step, question_keys):
+    current = st.session_state.get("selected_question")
+    index = question_keys.index(current) if current in question_keys else 0
+    index = max(0, min(len(question_keys) - 1, index + step))
+    st.session_state["selected_question"] = question_keys[index]
+
 
 st.divider()
-export = approved_jsonl(rows, reviews)
-export_count = len(export.splitlines())
-st.subheader('승인 데이터 내보내기')
-st.caption(f'승인된 학습용(train) 질문 {export_count}건만 포함합니다. 검증·시험·보류 문항은 제외합니다.')
-st.download_button('승인한 학습 데이터 내려받기', export.encode('utf-8'), file_name='caife_approved_train.jsonl', mime='application/x-ndjson', disabled=not export_count)
+header_col, navigation_col = st.columns([2, 1])
+with header_col:
+    st.subheader("이 질문을 살펴봐 주세요")
+    st.caption(f"{position + 1} / {len(filtered)}번째 질문  ·  {item['category']}")
+with navigation_col:
+    previous, following = st.columns(2)
+    previous.button(
+        "← 이전", disabled=position == 0, on_click=move_question,
+        args=(-1, keys), use_container_width=True,
+    )
+    following.button(
+        "다음 →", disabled=position == len(keys) - 1, on_click=move_question,
+        args=(1, keys), use_container_width=True,
+    )
+
+with st.container(border=True):
+    st.caption("손님이 이렇게 말했어요")
+    st.subheader(shown_question)
+    if review:
+        st.caption(f"내 평가: {review['status']}")
+    else:
+        st.caption("아직 평가하지 않은 질문이에요.")
+
+    st.markdown("**키오스크는 어떻게 하면 될까요?**")
+    if shown_action:
+        for action in shown_action.splitlines():
+            st.write("• " + action)
+        st.caption("위 내용은 저장된 처리 방법이에요. AI가 실제로 실행한 결과는 아니에요.")
+    else:
+        st.write("아직 작성된 처리 방법이 없어요. 아래에 직접 적거나 수정 필요로 표시할 수 있어요.")
+
+    if review and (shown_question != item["question"] or shown_action != original_action):
+        with st.expander("처음 작성된 내용 보기"):
+            st.write("처음 질문: " + item["question"])
+            st.write("처음 처리 방법: " + (original_action or "없음"))
+
+    if item["split"] != "train":
+        st.warning("모델을 나중에 시험하기 위해 따로 둔 질문이에요. 이 질문은 학습용 파일에 포함되지 않아요.")
+
+    if item["history"] or item["state"] or item["slots"]:
+        with st.expander("앞선 대화와 주문 상황 보기"):
+            if item["history"]:
+                for turn in item["history"]:
+                    st.write(f"{'손님' if turn.get('role') == 'user' else '안내'}: {turn.get('text', '')}")
+            if item["state"]:
+                st.write("현재 주문 상황")
+                st.json(item["state"], expanded=False)
+            if item["slots"]:
+                st.write("알려진 주문 정보")
+                st.json(item["slots"], expanded=False)
+
+st.markdown("### 내 평가")
+st.write("질문과 처리 방법을 읽고 선택해 주세요.")
+default_action = original_action
+decision_labels = ["괜찮아요", "수정이 필요해요", "사용하지 않을래요"]
+decision_to_status = {
+    "괜찮아요": "승인",
+    "수정이 필요해요": "수정 필요",
+    "사용하지 않을래요": "반려",
+}
+status_to_decision = {value: key for key, value in decision_to_status.items()}
+existing_decision = status_to_decision.get(review.get("status"))
+
+if "review_saved_message" in st.session_state:
+    st.success(st.session_state.pop("review_saved_message"))
+
+with st.form(key=f"review:{selected_key}"):
+    decision = st.radio(
+        "이 질문과 처리 방법이 적절한가요?",
+        decision_labels,
+        index=decision_labels.index(existing_decision) if existing_decision else None,
+        horizontal=True,
+    )
+    with st.expander(
+        "질문이나 처리 방법 수정하기",
+        expanded=not bool(review.get("expected_action", default_action)),
+    ):
+        edited_question = st.text_area(
+            "질문", value=review.get("question", item["question"]), height=85,
+            help="질문을 고치고 싶다면 이곳에서 수정해 주세요.",
+        )
+        action = st.text_area(
+            "키오스크가 할 일", value=review.get("expected_action", default_action),
+            placeholder="예: 화장실 위치를 찾아서 안내해요.", height=100,
+            help="괜찮아요로 저장하려면 키오스크가 할 일을 적어 주세요.",
+        )
+        answer = st.text_area(
+            "손님에게 할 말", value=review.get("expected_answer", ""),
+            placeholder="예: 화장실은 정문 밖 오른쪽 건물 2층에 있어요.", height=85,
+        )
+        comment = st.text_area(
+            "남길 의견", value=review.get("comment", ""),
+            placeholder="수정할 부분이나 평가한 이유를 적어 주세요. (선택)", height=85,
+        )
+    submitted = st.form_submit_button("평가 저장하기", type="primary", use_container_width=True)
+
+if submitted:
+    if decision is None:
+        st.error("먼저 평가를 선택해 주세요.")
+    else:
+        try:
+            save_review(selected_key, decision_to_status[decision], edited_question, action, answer, comment)
+            st.session_state["review_saved_message"] = "평가를 저장했어요. 다음 질문도 살펴볼 수 있어요."
+            st.rerun()
+        except (ValueError, OSError, sqlite3.Error) as exc:
+            st.error(f"저장하지 못했어요: {exc}")
+
+st.divider()
+with st.expander("평가한 학습 자료 내려받기"):
+    export = approved_jsonl(rows, reviews)
+    export_count = len(export.splitlines())
+    st.write(f"괜찮다고 평가한 학습용 질문 {export_count}개를 내려받을 수 있어요.")
+    st.caption("시험·검증용 질문은 학습용 파일에서 제외돼요.")
+    st.download_button(
+        "학습 자료 내려받기",
+        export.encode("utf-8"),
+        file_name="caife_approved_train.jsonl",
+        mime="application/x-ndjson",
+        disabled=not export_count,
+    )
+
+with st.expander("AI 담당 업무 안내"):
+    st.write("질문 생성 담당 → 질문을 만드는 역할")
+    st.write("처리 방법 담당 → 질문에 맞는 행동과 답변을 정하는 역할")
+    st.write("총괄 검토 담당 → 질문과 처리 방법을 점검하는 역할")
+    st.write("최종 평가 → 직접 확인하고 승인하거나 수정하는 역할")
+    st.caption("질문 생성·처리 방법·총괄 검토 AI는 아직 연결되지 않았어요.")
 
