@@ -1,11 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import MenuKiosk from './MenuKiosk';
 import CheckoutFlow from './CheckoutFlow';
 import { addCartItem, cartLineId, interpretVoiceOrder, preferredKoreanVoice } from './voiceOrder';
+import { observeApproach } from './approachCamera';
 import './styles/base.css';
 
-const VOICE_GREETING = '어서 오세요! 주문 도와드릴게요. 말로 주문하기를 누르고 메뉴 이름과 수량을 말씀해 주세요.';
+const VOICE_GREETING = '어서 오세요! 주문 도와드릴게요. 원하시는 메뉴를 말씀해 주세요.';
+const START_WITH_CAMERA = new URLSearchParams(window.location.search).get('approach') === 'camera';
+const LISTEN_WINDOW_MS = 8500;
 
 function Icon({ name, size = 24 }) {
   const paths = {
@@ -77,8 +80,12 @@ function App() {
   const [voiceDraft, setVoiceDraft] = useState(null);
   const [afterVoiceAdd, setAfterVoiceAdd] = useState(false);
   const [chooseVoiceDining, setChooseVoiceDining] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(START_WITH_CAMERA);
   const speechRef = useRef(null);
   const recognitionRef = useRef(null);
+  const recognitionTimer = useRef(null);
+  const automaticSession = useRef(false);
+  const greetedOnLoad = useRef(false);
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   useEffect(() => {
@@ -97,31 +104,61 @@ function App() {
   const cancelRecognition = useCallback(() => {
     const active = recognitionRef.current;
     recognitionRef.current = null;
+    clearTimeout(recognitionTimer.current);
     if (active) active.abort();
     setVoicePhase('idle');
   }, []);
-  const speak = useCallback((message) => {
+  const cancelSpeech = useCallback(() => {
+    speechRef.current = null;
+    window.speechSynthesis?.cancel();
+    setSpeaking(false);
+    setAudioStatus('');
+  }, []);
+  const stopAutomaticSession = () => {
+    if (automaticSession.current) cancelSpeech();
+    automaticSession.current = false;
+    cancelRecognition();
+  };
+  const speak = useCallback((message, afterSpeech) => {
     if (recognitionRef.current) cancelRecognition();
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      setAudioStatus('음성 안내를 사용할 수 없어요. 화면의 글자를 확인해 주세요.'); return;
+      afterSpeech?.(false);
+      return;
     }
-    speechRef.current = null;
-    window.speechSynthesis.cancel();
+    cancelSpeech();
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'ko-KR'; utterance.rate = slow ? 0.75 : 0.92;
     utterance.pitch = 1.04;
     const voice = preferredKoreanVoice(window.speechSynthesis.getVoices());
     if (voice) utterance.voice = voice;
     speechRef.current = utterance;
-    utterance.onstart = () => { if (speechRef.current === utterance) { setSpeaking(true); setAudioStatus('음성 안내를 재생하고 있어요.'); } };
-    utterance.onend = () => { if (speechRef.current === utterance) { setSpeaking(false); setAudioStatus('음성 안내가 끝났어요.'); } };
-    utterance.onerror = (event) => { if (speechRef.current === utterance) { setSpeaking(false); if (!['interrupted', 'canceled'].includes(event.error)) setAudioStatus('음성 재생이 안 돼요. 화면의 글자를 확인해 주세요.'); } };
+    utterance.onstart = () => {
+      if (speechRef.current !== utterance) return;
+      setSpeaking(true);
+      if (!afterSpeech) setAudioStatus('음성 안내를 재생하고 있어요.');
+    };
+    utterance.onend = () => {
+      if (speechRef.current !== utterance) return;
+      speechRef.current = null;
+      setSpeaking(false);
+      setAudioStatus('');
+      afterSpeech?.(true);
+    };
+    utterance.onerror = (event) => {
+      if (speechRef.current !== utterance) return;
+      speechRef.current = null;
+      setSpeaking(false);
+      if (!afterSpeech && !['interrupted', 'canceled'].includes(event.error)) {
+        setAudioStatus('음성 재생이 안 돼요. 화면의 글자를 확인해 주세요.');
+      }
+      afterSpeech?.(false);
+    };
     window.speechSynthesis.speak(utterance);
-  }, [cancelRecognition, slow]);
-  const stopSpeech = () => { speechRef.current = null; window.speechSynthesis?.cancel(); setSpeaking(false); setAudioStatus('음성 안내를 멈췄어요.'); };
+  }, [cancelRecognition, cancelSpeech, slow]);
+  const stopSpeech = () => { cancelSpeech(); setAudioStatus('음성 안내를 멈췄어요.'); };
   const cancelHome = useCallback(() => setConfirmHome(false), []);
   const resetVoice = () => {
-    cancelRecognition();
+    stopAutomaticSession();
     setHeard('');
     setVoiceMessage('');
     setVoiceDraft(null);
@@ -130,39 +167,59 @@ function App() {
   };
   const resetAndGoHome = () => {
     resetVoice();
-    speechRef.current = null;
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
-    setAudioStatus('');
+    cancelSpeech();
     setCart([]);
     setDining(null);
     setConfirmHome(false);
     setScreen('home');
   };
   const requestHome = () => {
-    cancelRecognition();
+    stopAutomaticSession();
     if (cart.length > 0) setConfirmHome(true);
     else resetAndGoHome();
   };
   const openCheckout = () => {
-    cancelRecognition();
+    stopAutomaticSession();
     setVoiceDraft(null);
     setAfterVoiceAdd(false);
     setChooseVoiceDining(false);
     setCheckout(true);
   };
   const selectDining = (mode) => {
-    cancelRecognition();
+    stopAutomaticSession();
+    setVoiceMessage('');
     setDining(mode);
     setScreen('menu');
-    if (chooseVoiceDining && cart.length) openCheckout();
+    if (chooseVoiceDining && cart.length) {
+      openCheckout();
+      speak('주문 내용을 확인해 주세요.');
+    }
   };
-  const voiceReply = (message) => {
+  const voiceReply = (message, waitForAnswer = false) => {
     setVoiceMessage(message);
+    if (waitForAnswer && automaticSession.current) {
+      setVoicePhase('speaking');
+      speak(message, (finished) => {
+        if (!automaticSession.current) return;
+        if (finished && Recognition) setVoicePhase('queued');
+        else stopAutomaticSession();
+      });
+      return;
+    }
     speak(message);
   };
   const orderByVoice = (transcript) => {
     setHeard(transcript);
+    const normalized = transcript.replace(/[\s.!?。？！]/g, '');
+    const requestedDining = /^(?:포장|포장이요|포장으로|포장해주세요|포장할게요|가져갈게요|가지고갈게요)$/.test(normalized)
+      ? '포장'
+      : /^(?:매장|매장이요|매장에서|매장에서먹을게요|매장에서먹고갈게요|먹고갈게요|여기서먹을게요)$/.test(normalized)
+        ? '매장 이용'
+        : null;
+    if (requestedDining && chooseVoiceDining && cart.length) {
+      selectDining(requestedDining);
+      return;
+    }
     const orderComplete = /^(?:아니요|아뇨|없어요|더\s*없어요|이게\s*다예요|결제\s*(?:할게요|해\s*주세요))[.!?]*$/;
     if (afterVoiceAdd && cart.length && orderComplete.test(transcript)) {
       setAfterVoiceAdd(false);
@@ -171,7 +228,7 @@ function App() {
         voiceReply('주문 확인 화면으로 갈게요.');
       } else {
         setChooseVoiceDining(true);
-        voiceReply('매장에서 드실지, 가져가실지 아래에서 골라 주세요.');
+        voiceReply('매장에서 드세요, 아니면 포장이세요?', true);
       }
       return;
     }
@@ -183,13 +240,13 @@ function App() {
     setVoiceDraft(result.draft ?? null);
     if (!result.item) {
       if (result.draft) setAfterVoiceAdd(false);
-      voiceReply(result.message);
+      voiceReply(result.message, true);
       return;
     }
     const lineId = cartLineId(result.item, []);
     const remaining = 99 - (cart.find((entry) => entry.lineId === lineId)?.quantity ?? 0);
     if (result.count > remaining) {
-      voiceReply('같은 메뉴는 주문 목록에 아흔아홉 개까지 담을 수 있어요.');
+      voiceReply('같은 메뉴는 주문 목록에 아흔아홉 개까지 담을 수 있어요.', true);
       return;
     }
     setCart((current) => addCartItem(current, result.item, result.count));
@@ -198,17 +255,16 @@ function App() {
     const name = result.item.temperature === 'ICE' ? '아이스 ' + result.item.name : result.item.name;
     const amount = ['한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉'][result.count - 1];
     const unit = result.item.group === '푸드' ? ' 개' : ' 잔';
-    voiceReply(name + ' ' + amount + unit + ' 담았어요. 더 필요한 거 있으세요?');
+    voiceReply(name + ' ' + amount + unit + ' 담았어요. 더 필요한 거 있으세요?', true);
   };
 
-  const startRecognition = () => {
+  const startRecognition = ({ resume = false } = {}) => {
     if (recognitionRef.current || !Recognition) return;
-    speechRef.current = null;
-    window.speechSynthesis?.cancel();
-    setSpeaking(false);
-    setAudioStatus('');
-    setHeard('');
-    setVoiceMessage('');
+    cancelSpeech();
+    if (!resume) {
+      setHeard('');
+      setVoiceMessage('');
+    }
     setVoicePhase('starting');
     const recognition = new Recognition();
     recognition.lang = 'ko-KR';
@@ -217,7 +273,13 @@ function App() {
     recognitionRef.current = recognition;
     let transcript = '';
     recognition.onstart = () => {
-      if (recognitionRef.current === recognition) setVoicePhase('listening');
+      if (recognitionRef.current !== recognition) return;
+      setVoicePhase('listening');
+      if (automaticSession.current) {
+        recognitionTimer.current = setTimeout(() => {
+          if (recognitionRef.current === recognition) recognition.stop();
+        }, LISTEN_WINDOW_MS);
+      }
     };
     recognition.onresult = (event) => {
       if (recognitionRef.current === recognition) transcript = event.results[event.resultIndex][0].transcript.trim();
@@ -225,30 +287,63 @@ function App() {
     recognition.onerror = (event) => {
       if (recognitionRef.current !== recognition) return;
       recognitionRef.current = null;
+      clearTimeout(recognitionTimer.current);
+      const wasAutomatic = automaticSession.current;
+      automaticSession.current = false;
       setVoicePhase('idle');
       const errors = {
         'not-allowed': '마이크 사용을 허용하거나 화면을 눌러 주문해 주세요.',
         'service-not-allowed': '음성 인식을 사용할 수 없어요. 화면을 눌러 주문해 주세요.',
         'audio-capture': '마이크를 찾지 못했어요. 화면을 눌러 주문해 주세요.',
         network: '음성 연결이 끊겼어요. 다시 시도하거나 화면을 눌러 주세요.',
-        'no-speech': '말소리를 듣지 못했어요. 다시 말씀해 주세요.',
+        'no-speech': wasAutomatic ? '아래 버튼을 눌러 주문을 이어갈 수 있어요.' : '말소리를 듣지 못했어요. 다시 말씀해 주세요.',
       };
       setVoiceMessage(errors[event.error] ?? '음성을 인식하지 못했어요. 다시 시도해 주세요.');
     };
     recognition.onend = () => {
       if (recognitionRef.current !== recognition) return;
       recognitionRef.current = null;
+      clearTimeout(recognitionTimer.current);
       setVoicePhase('idle');
       if (transcript) orderByVoice(transcript);
-      else setVoiceMessage('말소리를 듣지 못했어요. 다시 말씀해 주세요.');
+      else {
+        setVoiceMessage(automaticSession.current ? '아래 버튼을 눌러 주문을 이어갈 수 있어요.' : '말소리를 듣지 못했어요. 다시 말씀해 주세요.');
+        automaticSession.current = false;
+      }
     };
     try {
       recognition.start();
     } catch {
-      cancelRecognition();
+      stopAutomaticSession();
       setVoiceMessage('마이크를 시작할 수 없어요. 화면을 눌러 주문해 주세요.');
     }
   };
+  const startAutomaticGreeting = useEffectEvent(() => {
+    if (screen !== 'home' || checkout || confirmHome || cart.length || loadState !== 'ready' || automaticSession.current) return;
+    setHeard('');
+    automaticSession.current = true;
+    voiceReply(VOICE_GREETING, true);
+  });
+  const listenAfterGreeting = useEffectEvent(() => {
+    if (automaticSession.current && !checkout && !confirmHome) startRecognition({ resume: true });
+  });
+  useEffect(() => {
+    if (screen !== 'home' || loadState !== 'ready' || checkout || confirmHome) return;
+    if (cameraEnabled) {
+      return observeApproach(startAutomaticGreeting, () => {
+        greetedOnLoad.current = true;
+        setCameraEnabled(false);
+        setVoiceMessage('접근 감지를 사용할 수 없어요. 아래에서 주문을 시작해 주세요.');
+      });
+    }
+    if (!greetedOnLoad.current) {
+      greetedOnLoad.current = true;
+      startAutomaticGreeting();
+    }
+  }, [screen, loadState, checkout, confirmHome, cameraEnabled]);
+  useEffect(() => {
+    if (voicePhase === 'queued') listenAfterGreeting();
+  }, [voicePhase]);
   const updateHomeQuantity = (lineId, delta) => {
     cancelRecognition();
     setCart((current) => current.flatMap((item) => {
@@ -260,6 +355,7 @@ function App() {
   useEffect(() => {
     window.speechSynthesis?.getVoices();
     return () => {
+      clearTimeout(recognitionTimer.current);
       const active = recognitionRef.current;
       recognitionRef.current = null;
       active?.abort();
@@ -272,14 +368,20 @@ function App() {
     resetVoice();
     speak('주문 목록을 비웠어요.');
   };
-  const recording = voicePhase !== 'idle';
+  const toggleCamera = () => {
+    greetedOnLoad.current = true;
+    stopAutomaticSession();
+    setVoiceMessage('');
+    setCameraEnabled((active) => !active);
+  };
+  const recording = ['starting', 'listening', 'finishing'].includes(voicePhase);
   const voiceButton = Recognition && <button type="button" className="voice-order-button"
     disabled={voicePhase === 'starting' || voicePhase === 'finishing'}
     onClick={recording ? () => {
       if (!recognitionRef.current) return;
       setVoicePhase('finishing');
       recognitionRef.current.stop();
-    } : startRecognition}>
+    } : () => startRecognition()}>
     <Icon name="mic" size={26}/>
     {voicePhase === 'listening' ? '말하기 끝' : recording ? '잠시만요' : '말로 주문하기'}
   </button>;
@@ -289,7 +391,7 @@ function App() {
     voiceMessage || (!Recognition ? '이 브라우저에서는 화면을 눌러 주문해 주세요.' : '');
   const voiceFeedback = (voiceStatus || heard) && <div className="voice-feedback" role="status">
     {heard && <p className="voice-heard">들었어요: {heard}</p>}
-    {voiceStatus && <p>{voiceStatus}</p>}
+    {voiceStatus && voiceStatus !== VOICE_GREETING && <p>{voiceStatus}</p>}
   </div>;
 
   return <div className={`kiosk-shell${screen === 'home' ? ' is-home' : ''}${largeText ? ' large-text' : ''}`}>
@@ -297,23 +399,22 @@ function App() {
       <header className="kiosk-header">
         <div className="logo-mark"><Icon name="cup" size={25}/></div>
         <div className="logo-text"><strong>CAIFE</strong><span>말과 터치로 편하게 주문해요</span></div>
-        <div className="header-tools"><button className="control-button" aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>가가 <span>{largeText ? '기본 크기' : '크게 보기'}</span></button><button className="control-button" aria-pressed={slow} onClick={() => setSlow(!slow)}><Icon name="volume" size={20}/><span>{slow ? '보통 속도' : '천천히 듣기'}</span></button></div>
+        <div className="header-tools">
+          <button className="control-button" aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>가가 <span>{largeText ? '기본 크기' : '크게 보기'}</span></button>
+          <button className="control-button" aria-pressed={slow} onClick={() => setSlow(!slow)}><Icon name="volume" size={20}/><span>{slow ? '보통 속도' : '천천히 듣기'}</span></button>
+          <button type="button" className="control-button camera-toggle" role="switch" aria-label="카메라 접근 감지" aria-checked={cameraEnabled} onClick={toggleCamera}>카메라 {cameraEnabled ? '켜짐' : '꺼짐'}</button>
+        </div>
       </header>
       <main className="kiosk-main"><section className="home-screen">
         <div className="assistant-stage">
           <div className="mascot-halo"><Mascot/></div>
           <div className="dialogue-card">
             <span className="dialogue-label"><span className="dialogue-dot"/> CAIFE 안내</span>
-            <div className="dialogue-log"><p>어서 오세요!<br/>주문 도와드릴게요.</p></div>
+            <div className="dialogue-log"><h1>어서 오세요!<br/>주문 도와드릴게요.</h1></div>
             {Recognition && <p className="home-voice-example">“아아 두 잔 주세요”</p>}
             {voiceFeedback}
           </div>
-          <div className="home-voice-actions">
-            {voiceButton}
-            <button className="home-repeat" onClick={() => speak(voiceMessage || (Recognition ? VOICE_GREETING : '어서 오세요! 매장이나 포장을 눌러 주문해 주세요.'))}><Icon name="volume" size={26}/> 안내 다시 듣기</button>
-          </div>
         </div>
-        <h1 className="home-dining-question">어디에서 드실 건가요?</h1>
         <div className="home-actions">
           <button className="dining-button store-button" onClick={() => selectDining('매장 이용')}><span className="dining-icon"><Icon name="store" size={42}/></span><strong>매장에서 먹기</strong></button>
           <button className="dining-button takeaway-button" onClick={() => selectDining('포장')}><span className="dining-icon"><Icon name="bag" size={42}/></span><strong>포장해서 가져가기</strong></button>
