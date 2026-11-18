@@ -94,3 +94,15 @@
 .ck-select.ck-unavailable { color: #595959; background: #f2f2f2; cursor: not-allowed; opacity: 1; }
 .ck-select small { display: block; margin-top: 4px; font-size: 14px; font-weight: 500; }
 .ck-payment-status { margin: 10px 0 0; text-align: right; color: #534c43; font-size: 16px; }
+
+.ck-dialog { display: flex; flex-direction: column; overflow: hidden; }
+.ck-header, .ck-progress { flex: none; }
+.ck-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.ck-footer { flex: none; padding: 8px 16px 12px; border-top: 1px solid #e4ded4; background: #fffdfa; }
+.ck-footer .ck-actions { margin-top: 8px; }
+.ck-footer .ck-actions button { min-height: 48px; padding: 7px 9px; }
+.ck-footer .ck-payment-status { margin-top: 5px; }
+@media (max-width: 480px) {
+  .ck-footer { padding: 6px 8px 8px; }
+  .ck-footer .ck-actions button { min-width: 0; font-size: 16px; }
+}

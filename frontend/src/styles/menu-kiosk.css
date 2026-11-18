@@ -119,3 +119,88 @@
 }
 
 .mk-option-scroll { margin: 8px 2px 0; color: #315840; font-size: 16px; font-weight: 700; line-height: 1.4; }
+
+/* 메뉴판과 주문 목록은 독립적으로 스크롤하고 안내는 주문 영역에 둡니다. */
+.mk-page { height: 100dvh; min-height: 0; overflow: hidden; }
+.mk-header { flex: none; }
+.mk-menu { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.mk-cart { padding: 10px 16px 12px; border-top: 2px solid #bdcdbf; }
+.mk-cart-heading > div:first-child strong { margin: 0; font-size: 18px; }
+.mk-cart-layout { margin-top: 6px; }
+.mk-cart-list { position: relative; min-height: 0; max-height: clamp(52px, 13dvh, 104px); }
+.mk-empty { padding: 11px 8px; }
+.mk-cart-item { padding: 7px 5px; }
+.mk-cart-item.is-recent { background: #edf5eb; box-shadow: inset 4px 0 #456b51; padding-left: 10px; }
+.mk-cart-checkout { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 3px; padding: 8px 10px; }
+.mk-cart-checkout strong { justify-self: end; margin: 0; }
+.mk-cart-checkout .mk-primary { grid-column: 1 / -1; min-height: 46px; padding: 8px 10px; }
+.kiosk-shell:not(.is-home) > .speech-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.order-guide {
+  display: grid;
+  flex: none;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 11px;
+  border: 1px solid #bcd0c0;
+  border-radius: 12px;
+  background: #eff5ed;
+  color: #223e2e;
+}
+.mk-cart > .order-guide { margin-bottom: 8px; }
+.mk-dialog > .order-guide { margin: 6px 16px; }
+.home-reset-dialog .order-guide { margin-bottom: 12px; }
+.order-guide-avatar {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fffaf1;
+}
+.order-guide-avatar .caife-mascot { width: 43px; height: 43px; }
+.order-guide-meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 9px; font-size: 14px; }
+.order-guide-meta span { color: #255737; font-weight: 800; }
+.order-guide p { margin: 2px 0 0; line-height: 1.35; overflow-wrap: anywhere; }
+.order-guide .order-guide-message { font-size: 19px; font-weight: 800; word-break: keep-all; overflow-wrap: break-word; }
+.order-guide .order-guide-heard, .order-guide .order-guide-pending { font-size: 14px; color: #3a5847; }
+.order-guide-choices { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.order-guide-choices button {
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 1px solid #446850;
+  border-radius: 8px;
+  background: #fff;
+  color: #21422f;
+  font: inherit;
+  font-weight: 800;
+}
+.order-guide button:focus-visible { outline: 3px solid #a95736; outline-offset: 2px; }
+.order-guide .voice-order-button { min-height: 48px; font-size: 15px; padding: 5px 8px; }
+.order-guide .voice-order-button svg { width: 18px; height: 18px; }
+.large-text .order-guide .order-guide-message { font-size: 23px; }
+@media (max-width: 700px) {
+  .mk-cart { padding: 8px 10px; }
+  .mk-cart-layout { grid-template-columns: minmax(0, 1fr) minmax(114px, .72fr); gap: 7px; }
+  .mk-cart-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .mk-cart-item > span { grid-column: 1 / -1; }
+  .mk-cart-checkout { grid-template-columns: auto 1fr; }
+  .mk-cart-checkout strong { justify-self: end; font-size: 18px; }
+  .mk-cart-checkout .mk-primary { font-size: 15px; }
+  .order-guide { grid-template-columns: 36px minmax(0, 1fr) auto; gap: 6px; padding: 7px; }
+  .order-guide-avatar, .order-guide-avatar .caife-mascot { width: 35px; height: 35px; }
+  .order-guide .voice-order-button { max-width: 86px; gap: 4px; word-break: normal; }
+  .order-guide .voice-order-button svg { flex: none; }
+}
+@media (max-height: 570px) {
+  .mk-page { height: auto; min-height: 100dvh; overflow: visible; }
+  .mk-menu { flex: 1 0 auto; overflow: visible; min-height: 220px; }
+}

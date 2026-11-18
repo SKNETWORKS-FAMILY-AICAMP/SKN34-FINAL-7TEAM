@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useEffectEvent, useRef, useState } from 
 import { createRoot } from 'react-dom/client';
 import MenuKiosk from './MenuKiosk';
 import CheckoutFlow from './CheckoutFlow';
-import { addCartItem, cartLineId, interpretVoiceOrder, preferredKoreanVoice } from './voiceOrder';
+import { addCartItem, cartLineId, categoryFromSpeech, interpretVoiceOrder, preferredKoreanVoice } from './voiceOrder';
 import { observeApproach } from './approachCamera';
 import './styles/base.css';
 
@@ -37,14 +37,28 @@ function Mascot() {
 }
 
 
-function ResetOrderDialog({ onCancel, onConfirm }) {
+function OrderGuide({ message, heard, indicator, microphone, children }) {
+  return <aside className="order-guide" aria-label="카이페 안내">
+    <div className="order-guide-avatar" aria-hidden="true"><Mascot/></div>
+    <div className="order-guide-copy">
+      <div className="order-guide-meta"><strong>CAIFE 안내</strong>{indicator && <span role="status">{indicator}</span>}</div>
+      {heard && <p className="order-guide-heard">들었어요 · {heard}</p>}
+      <p className="order-guide-message" role="status">{message}</p>
+      {children}
+    </div>
+    {microphone}
+  </aside>;
+}
+
+function ResetOrderDialog({ onCancel, onConfirm, guide }) {
   const dialogRef = useRef(null);
   const cancelRef = useRef(null);
+  const cancel = useEffectEvent(onCancel);
   useEffect(() => {
     const previous = document.activeElement;
     cancelRef.current?.focus();
     const onKey = (event) => {
-      if (event.key === 'Escape') { event.preventDefault(); onCancel(); return; }
+      if (event.key === 'Escape') { event.preventDefault(); cancel(); return; }
       if (event.key !== 'Tab' || !dialogRef.current) return;
       const buttons = [...dialogRef.current.querySelectorAll('button:not(:disabled)')];
       if (!buttons.length) return;
@@ -53,10 +67,11 @@ function ResetOrderDialog({ onCancel, onConfirm }) {
     };
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); previous?.focus?.(); };
-  }, [onCancel]);
+  }, []);
   return <div className="modal-backdrop"><section className="review-modal home-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="home-reset-title" aria-describedby="home-reset-description" ref={dialogRef}>
     <h2 id="home-reset-title">처음으로 돌아갈까요?</h2>
     <p id="home-reset-description">처음으로 돌아가면 선택한 메뉴가 모두 삭제돼요.</p>
+    {guide}
     <div className="home-reset-actions"><button ref={cancelRef} className="home-reset-cancel" onClick={onCancel}>계속 주문하기</button><button className="home-reset-confirm" onClick={onConfirm}>지우고 처음으로</button></div>
   </section></div>;
 }
@@ -66,6 +81,9 @@ function App() {
   const [loadState, setLoadState] = useState('loading');
   const [retryKey, setRetryKey] = useState(0);
   const [screen, setScreen] = useState('home');
+  const [menuView, setMenuView] = useState({ category: '전체' });
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [highlightedLine, setHighlightedLine] = useState(null);
   const [cart, setCart] = useState([]);
   const [dining, setDining] = useState(null);
   const [checkout, setCheckout] = useState(false);
@@ -155,8 +173,11 @@ function App() {
     };
     window.speechSynthesis.speak(utterance);
   }, [cancelRecognition, cancelSpeech, slow]);
-  const stopSpeech = () => { cancelSpeech(); setAudioStatus('음성 안내를 멈췄어요.'); };
-  const cancelHome = useCallback(() => setConfirmHome(false), []);
+  const stopSpeech = () => { stopAutomaticSession(); cancelSpeech(); setAudioStatus('음성 안내를 멈췄어요.'); };
+  const cancelHome = () => {
+    setConfirmHome(false);
+    voiceReply('담은 메뉴를 그대로 두었어요. 계속 주문해 주세요.', true);
+  };
   const resetVoice = () => {
     stopAutomaticSession();
     setHeard('');
@@ -171,29 +192,49 @@ function App() {
     setCart([]);
     setDining(null);
     setConfirmHome(false);
+    setCheckout(false);
+    setSelectedItem(null);
+    setHighlightedLine(null);
+    setMenuView({ category: '전체' });
     setScreen('home');
   };
   const requestHome = () => {
-    stopAutomaticSession();
-    if (cart.length > 0) setConfirmHome(true);
-    else resetAndGoHome();
+    if (!cart.length) {
+      resetAndGoHome();
+      return;
+    }
+    setSelectedItem(null);
+    setCheckout(false);
+    setConfirmHome(true);
+    voiceReply('담은 메뉴를 지우고 처음으로 갈까요?', true);
   };
-  const openCheckout = () => {
-    stopAutomaticSession();
+  const openCheckout = ({ chosenDining = dining } = {}) => {
+    setSelectedItem(null);
+    setScreen('menu');
     setVoiceDraft(null);
     setAfterVoiceAdd(false);
     setChooseVoiceDining(false);
     setCheckout(true);
+    voiceReply(chosenDining ? '주문 내역과 금액을 확인해 주세요.' : '주문 내역을 확인하고 매장이나 포장을 골라 주세요.', true);
+  };
+  const closeCheckout = () => {
+    setCheckout(false);
+    voiceReply('메뉴판으로 돌아왔어요. 더 담으실 메뉴를 골라 주세요.', true);
   };
   const selectDining = (mode) => {
-    stopAutomaticSession();
-    setVoiceMessage('');
     setDining(mode);
-    setScreen('menu');
     if (chooseVoiceDining && cart.length) {
-      openCheckout();
-      speak('주문 내용을 확인해 주세요.');
+      openCheckout({ chosenDining: mode });
+      return;
     }
+    stopAutomaticSession();
+    setHeard('');
+    setVoiceMessage('드시고 싶은 메뉴를 골라 주세요.');
+    setScreen('menu');
+  };
+  const chooseCheckoutDining = (mode) => {
+    setDining(mode);
+    voiceReply(mode ? '이용 방법을 골랐어요. 주문 내역을 확인하고 다음을 눌러 주세요.' : '매장에서 드실지, 포장하실지 골라 주세요.', true);
   };
   const voiceReply = (message, waitForAnswer = false) => {
     setVoiceMessage(message);
@@ -208,9 +249,63 @@ function App() {
     }
     speak(message);
   };
-  const orderByVoice = (transcript) => {
-    setHeard(transcript);
+  const showCategory = (category, say = false) => {
+    if (!say) setHeard('');
+    setSelectedItem(null);
+    setCheckout(false);
+    setScreen('menu');
+    setMenuView({ category });
+    const label = category === '신상품' ? '신메뉴' : category === '전체' ? '전체 메뉴' : category + ' 메뉴';
+    const message = label + '를 보여드릴게요.';
+    if (say || automaticSession.current) voiceReply(message, true);
+    else setVoiceMessage(message);
+  };
+  const closeOption = () => {
+    setSelectedItem(null);
+    voiceReply('드시고 싶은 메뉴를 골라 주세요.', true);
+  };
+  const chooseItem = (item) => {
+    setHeard('');
+    setSelectedItem(item);
+    setVoiceDraft(null);
+    voiceReply(item.option_groups?.length ? '옵션과 수량을 고르고 주문 목록에 담아 주세요.' : '수량을 고르고 주문 목록에 담아 주세요.', true);
+  };
+  const putInCart = (item, count, options = []) => {
+    const sortedOptions = [...options].sort((a, b) => a.choice_id.localeCompare(b.choice_id));
+    const lineId = cartLineId(item, sortedOptions);
+    const quantityInCart = cart.find((entry) => entry.lineId === lineId)?.quantity ?? 0;
+    const added = Math.min(count, 99 - quantityInCart);
+    if (added <= 0) {
+      voiceReply('같은 메뉴는 주문 목록에 아흔아홉 개까지 담을 수 있어요.', true);
+      return;
+    }
+    setCart((current) => addCartItem(current, item, added, sortedOptions));
+    setSelectedItem(null);
+    setHighlightedLine(lineId);
+    setAfterVoiceAdd(true);
+    setChooseVoiceDining(false);
+    const name = item.temperature === 'ICE' ? '아이스 ' + item.name : item.name;
+    const unit = item.group === '푸드' ? '개' : '잔';
+    voiceReply(name + ' ' + added + unit + ' 담았어요. 더 필요한 거 있으세요?', true);
+  };
+  const orderByVoice = (transcript, fromTouch = false) => {
+    if (!fromTouch) setHeard(transcript);
     const normalized = transcript.replace(/[\s.!?。？！]/g, '');
+    if (confirmHome) {
+      if (/^(?:네|예|응|지워줘|지워주세요|지우고처음으로|취소할게요|처음으로가주세요)$/.test(normalized)) resetAndGoHome();
+      else if (/^(?:아니요|아뇨|아니|계속주문|계속주문할게요)$/.test(normalized)) cancelHome();
+      else voiceReply('주문을 지우려면 네, 계속하려면 아니요라고 말씀해 주세요.', true);
+      return;
+    }
+    if (/^(?:주문안할게요|주문안할래요|주문안할래|안살게요|주문취소|주문취소해줘|주문취소해주세요|처음으로|처음으로가줘|처음으로돌아가줘)$/.test(normalized)) {
+      requestHome();
+      return;
+    }
+    const requestedCategory = categoryFromSpeech(transcript, items);
+    if (requestedCategory) {
+      showCategory(requestedCategory, true);
+      return;
+    }
     const requestedDining = /^(?:포장|포장이요|포장으로|포장해주세요|포장할게요|가져갈게요|가지고갈게요)$/.test(normalized)
       ? '포장'
       : /^(?:매장|매장이요|매장에서|매장에서먹을게요|매장에서먹고갈게요|먹고갈게요|여기서먹을게요)$/.test(normalized)
@@ -225,10 +320,17 @@ function App() {
       setAfterVoiceAdd(false);
       if (dining) {
         openCheckout();
-        voiceReply('주문 확인 화면으로 갈게요.');
       } else {
         setChooseVoiceDining(true);
         voiceReply('매장에서 드세요, 아니면 포장이세요?', true);
+      }
+      return;
+    }
+    if (checkout) {
+      if (requestedDining) {
+        chooseCheckoutDining(requestedDining);
+      } else {
+        voiceReply('화면의 선택을 이어가거나, 메뉴를 다시 보여 달라고 말씀해 주세요.', true);
       }
       return;
     }
@@ -239,23 +341,21 @@ function App() {
     const result = interpretVoiceOrder(transcript, items, voiceDraft);
     setVoiceDraft(result.draft ?? null);
     if (!result.item) {
-      if (result.draft) setAfterVoiceAdd(false);
+      if (result.draft) {
+        setScreen('menu');
+        setSelectedItem(null);
+        setAfterVoiceAdd(false);
+        if (result.draft.waitingFor === 'temperature') {
+          const matched = items.find((item) => item.name === result.draft.displayName);
+          const category = matched?.categories.find((name) => name !== '신상품');
+          if (category && menuView.category !== category) setMenuView({ category });
+        }
+      }
       voiceReply(result.message, true);
       return;
     }
-    const lineId = cartLineId(result.item, []);
-    const remaining = 99 - (cart.find((entry) => entry.lineId === lineId)?.quantity ?? 0);
-    if (result.count > remaining) {
-      voiceReply('같은 메뉴는 주문 목록에 아흔아홉 개까지 담을 수 있어요.', true);
-      return;
-    }
-    setCart((current) => addCartItem(current, result.item, result.count));
-    setAfterVoiceAdd(true);
-    setChooseVoiceDining(false);
-    const name = result.item.temperature === 'ICE' ? '아이스 ' + result.item.name : result.item.name;
-    const amount = ['한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉'][result.count - 1];
-    const unit = result.item.group === '푸드' ? ' 개' : ' 잔';
-    voiceReply(name + ' ' + amount + unit + ' 담았어요. 더 필요한 거 있으세요?', true);
+    setScreen('menu');
+    putInCart(result.item, result.count);
   };
 
   const startRecognition = ({ resume = false } = {}) => {
@@ -324,8 +424,8 @@ function App() {
     automaticSession.current = true;
     voiceReply(VOICE_GREETING, true);
   });
-  const listenAfterGreeting = useEffectEvent(() => {
-    if (automaticSession.current && !checkout && !confirmHome) startRecognition({ resume: true });
+  const listenAfterReply = useEffectEvent(() => {
+    if (automaticSession.current) startRecognition({ resume: true });
   });
   useEffect(() => {
     if (screen !== 'home' || loadState !== 'ready' || checkout || confirmHome) return;
@@ -342,7 +442,7 @@ function App() {
     }
   }, [screen, loadState, checkout, confirmHome, cameraEnabled]);
   useEffect(() => {
-    if (voicePhase === 'queued') listenAfterGreeting();
+    if (voicePhase === 'queued') listenAfterReply();
   }, [voicePhase]);
   const updateHomeQuantity = (lineId, delta) => {
     cancelRecognition();
@@ -365,8 +465,9 @@ function App() {
   }, []);
   const clearCart = () => {
     setCart([]);
+    setHighlightedLine(null);
     resetVoice();
-    speak('주문 목록을 비웠어요.');
+    voiceReply('주문 목록을 비웠어요. 원하시는 메뉴를 골라 주세요.');
   };
   const toggleCamera = () => {
     greetedOnLoad.current = true;
@@ -383,16 +484,37 @@ function App() {
       recognitionRef.current.stop();
     } : () => startRecognition()}>
     <Icon name="mic" size={26}/>
-    {voicePhase === 'listening' ? '말하기 끝' : recording ? '잠시만요' : '말로 주문하기'}
+    {voicePhase === 'listening' ? '말하기 끝' : recording ? '잠시만요' : '말하기'}
   </button>;
-  const voiceStatus = voicePhase === 'listening' ? '듣고 있어요. 말씀해 주세요.' :
-    voicePhase === 'starting' ? '마이크를 준비하고 있어요.' :
-    voicePhase === 'finishing' ? '말씀하신 내용을 확인하고 있어요.' :
-    voiceMessage || (!Recognition ? '이 브라우저에서는 화면을 눌러 주문해 주세요.' : '');
+  const voiceIndicator = {
+    listening: '듣고 있어요',
+    starting: '마이크 준비 중',
+    finishing: '말씀하신 내용 확인 중',
+  }[voicePhase];
+  const voiceStatus = voiceIndicator || voiceMessage || (!Recognition ? '이 브라우저에서는 화면을 눌러 주문해 주세요.' : '');
   const voiceFeedback = (voiceStatus || heard) && <div className="voice-feedback" role="status">
     {heard && <p className="voice-heard">들었어요: {heard}</p>}
     {voiceStatus && voiceStatus !== VOICE_GREETING && <p>{voiceStatus}</p>}
   </div>;
+  const guide = <OrderGuide message={voiceMessage || '드시고 싶은 메뉴를 골라 주세요.'} heard={heard}
+    indicator={voiceIndicator} microphone={voiceButton}>
+    {voiceDraft?.waitingFor === 'temperature' && !selectedItem && !checkout && !confirmHome && <>
+      <p className="order-guide-pending">{voiceDraft.displayName}{voiceDraft.count ? ' ' + voiceDraft.count + '잔' : ''} · 온도 선택</p>
+      <div className="order-guide-choices">
+        <button type="button" onClick={() => orderByVoice('아이스로', true)}>아이스</button>
+        <button type="button" onClick={() => orderByVoice('따뜻하게', true)}>따뜻하게</button>
+      </div>
+    </>}
+    {voiceDraft?.waitingFor === 'quantity' && !selectedItem && !checkout && !confirmHome && <>
+      <p className="order-guide-pending">{voiceDraft.displayName} · 수량 선택</p>
+      <div className="order-guide-choices">{[1, 2, 3].map((count) =>
+        <button type="button" key={count} onClick={() => orderByVoice(count + '개', true)}>{count}개</button>)}</div>
+    </>}
+    {chooseVoiceDining && !checkout && !confirmHome && <div className="order-guide-choices">
+      <button type="button" onClick={() => selectDining('매장 이용')}>매장에서 먹기</button>
+      <button type="button" onClick={() => selectDining('포장')}>포장하기</button>
+    </div>}
+  </OrderGuide>;
 
   return <div className={`kiosk-shell${screen === 'home' ? ' is-home' : ''}${largeText ? ' large-text' : ''}`}>
     {screen === 'home' ? <>
@@ -421,10 +543,18 @@ function App() {
         </div>
       </section></main>
       {cart.length > 0 && <section className="cart-bar" aria-label="주문 목록"><div className="cart-head"><div><span className="cart-icon"><Icon name="bag" size={21}/></span><strong>주문 목록</strong><span className="cart-count">{cart.reduce((sum, item) => sum + item.quantity, 0)}개</span></div><button className="clear-button" disabled={!cart.length} onClick={clearCart}>전체 비우기</button></div><div className="cart-content"><div className="cart-items">{cart.length === 0 ? <p className="cart-empty">선택한 메뉴가 여기에 보여요.</p> : cart.map((item) => <div className="cart-item" key={item.lineId || item.id}><div className="cart-item-copy"><strong>{item.name}</strong><span>{item.quantity}개 · {typeof item.price === 'number' ? `${item.price.toLocaleString('ko-KR')}원` : '가격 미확인'}</span></div><div className="cart-item-controls"><button className="qty-button" aria-label={`${item.name} 한 개 줄이기`} onClick={() => updateHomeQuantity(item.lineId || item.id, -1)}>−</button><span>{item.quantity}</span><button className="qty-button" aria-label={`${item.name} 한 개 추가`} onClick={() => updateHomeQuantity(item.lineId || item.id, 1)}>＋</button></div></div>)}</div><div className="cart-summary"><div className="cart-total"><span>주문 금액</span><strong>{cart.length && cart.every((item) => typeof item.price === 'number') ? `${cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString('ko-KR')}원` : '총액 미확인'}</strong></div><button className="checkout-button" disabled={!cart.length} onClick={openCheckout}>주문 확인 <Icon name="arrow" size={22}/></button></div></div></section>}
-    </> : <MenuKiosk items={items} loadState={loadState} onRetry={() => setRetryKey((n) => n + 1)} cart={cart} setCart={setCart} speak={speak} onHome={requestHome} onCheckout={openCheckout} largeText={largeText} setLargeText={setLargeText} slow={slow} setSlow={setSlow} speaking={speaking} stopSpeech={stopSpeech} voiceButton={voiceButton} voiceFeedback={voiceFeedback} onClear={clearCart} cancelRecognition={cancelRecognition}/>}
-    {confirmHome && <ResetOrderDialog onCancel={cancelHome} onConfirm={resetAndGoHome}/>}
+    </> : <MenuKiosk items={items} loadState={loadState} onRetry={() => setRetryKey((n) => n + 1)}
+      cart={cart} setCart={setCart} speak={speak} onHome={requestHome}
+      onCheckout={() => { setHeard(''); openCheckout(); }}
+      largeText={largeText} setLargeText={setLargeText} slow={slow} setSlow={setSlow}
+      speaking={speaking} stopSpeech={stopSpeech} guide={checkout || confirmHome ? null : guide}
+      menuView={menuView} onCategory={showCategory} selectedItem={selectedItem} onSelectItem={chooseItem}
+      onCloseItem={closeOption} onAddItem={putInCart} highlightedLine={highlightedLine}
+      onClear={clearCart} cancelRecognition={cancelRecognition}/>}
+    {confirmHome && <ResetOrderDialog onCancel={cancelHome} onConfirm={resetAndGoHome} guide={guide}/>}
     <div className="speech-status" role="status">{audioStatus}</div>
-    {checkout && <CheckoutFlow cart={cart} dining={dining} onDiningChange={setDining} onClose={() => setCheckout(false)} onComplete={() => { setCheckout(false); resetAndGoHome(); }} speak={speak}/>}
+    {checkout && <CheckoutFlow cart={cart} dining={dining} onDiningChange={chooseCheckoutDining}
+      onClose={closeCheckout} onStepGuide={(message) => { setHeard(''); voiceReply(message, true); }} guide={guide}/>}
   </div>;
 }
 
