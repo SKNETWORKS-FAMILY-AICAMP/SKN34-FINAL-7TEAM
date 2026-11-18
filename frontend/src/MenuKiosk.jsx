@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { addCartItem } from './voiceOrder';
 import './styles/menu-kiosk.css';
 
 const PAGE_SIZE = 12;
@@ -80,7 +81,7 @@ function OptionDialog({ item, onClose, onAdd, speak }) {
   </section></div>;
 }
 
-export default function MenuKiosk({ items = [], loadState, onRetry, cart = [], setCart, speak, onHome, onCheckout, largeText, setLargeText, slow, setSlow, speaking, stopSpeech, collectedAt }) {
+export default function MenuKiosk({ items = [], loadState, onRetry, cart = [], setCart, speak, onHome, onCheckout, largeText, setLargeText, slow, setSlow, speaking, stopSpeech, voiceButton, voiceFeedback, onClear, cancelRecognition }) {
   const [category, setCategory] = useState('전체');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -94,26 +95,26 @@ export default function MenuKiosk({ items = [], loadState, onRetry, cart = [], s
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
   const total = cart.length && cart.every((item) => isPriceKnown(item.price)) ? priceText(cart.reduce((sum, item) => sum + item.price * item.quantity, 0)) : '총액 미확인';
   const addItem = (item, quantity, selectedOptions) => {
-    const options = [...selectedOptions].sort((a, b) => a.choice_id.localeCompare(b.choice_id));
-    const lineId = `${item.id}:${JSON.stringify(options.map((option) => option.choice_id))}`;
-    const optionPrice = options.reduce((sum, option) => sum + option.price, 0);
-    const orderItem = { ...item, basePrice: item.price, price: isPriceKnown(item.price) ? item.price + optionPrice : null };
-    setCart((current) => { const found = current.find((entry) => entry.lineId === lineId); return found ? current.map((entry) => entry.lineId === lineId ? { ...entry, quantity: Math.min(99, entry.quantity + quantity) } : entry) : [...current, { ...orderItem, lineId, quantity, selectedOptions: options }]; });
+    setCart((current) => addCartItem(current, item, quantity, selectedOptions));
     setSelected(null); speak?.(`${item.name} 주문 목록을 확인해 주세요.`);
   };
-  const adjust = (lineId, delta) => setCart((current) => current.flatMap((entry) => { if (entry.lineId !== lineId) return [entry]; const quantity = entry.quantity + delta; return quantity > 0 ? [{ ...entry, quantity: Math.min(99, quantity) }] : []; }));
+  const adjust = (lineId, delta) => {
+    cancelRecognition();
+    setCart((current) => current.flatMap((entry) => { if (entry.lineId !== lineId) return [entry]; const quantity = entry.quantity + delta; return quantity > 0 ? [{ ...entry, quantity: Math.min(99, quantity) }] : []; }));
+  };
   const openItem = (item) => { setSelected(item); speak?.(item.option_groups?.length ? '옵션과 수량을 선택하고 주문 목록에 담아 주세요.' : '수량을 선택하고 주문 목록에 담아 주세요.'); };
   return <div className={`mk-page${largeText ? ' mk-large' : ''}`}>
     <header className="mk-header"><div className="mk-header-row"><button onClick={onHome} className="mk-home">← 처음으로</button><div className="mk-brand"><span>☕</span><strong>CAIFE</strong><small>함께 고르는 카페</small></div><div className="mk-tools"><button aria-pressed={largeText} onClick={() => setLargeText(!largeText)}>{largeText ? '기본 크기' : '가가 크게 보기'}</button><button aria-pressed={slow} onClick={() => setSlow(!slow)}>{slow ? '보통 속도' : '천천히 듣기'}</button></div></div>
       <nav className="mk-tabs" aria-label="메뉴 분류">{categories.map((item) => <button key={item} aria-pressed={category === item} className={category === item ? 'is-active' : ''} onClick={() => { setCategory(item); setPage(1); }}>{item}</button>)}</nav></header>
     <main className="mk-menu"><div className="mk-menu-title"><div><span className="mk-eyebrow">메뉴 선택 · 01</span><h1>{category === '전체' ? '어떤 메뉴를 드실까요?' : category}</h1></div><button className="mk-listen" disabled={loadState !== 'ready'} onClick={() => speak?.(visible.length ? `현재 페이지 메뉴입니다. ${visible.map((i) => i.name).join(', ')}.` : '표시할 메뉴가 없습니다.')}>🔊 메뉴 듣기</button>{speaking && <button className="mk-listen" onClick={stopSpeech}>음성 멈추기</button>}</div>
+      {!selected && <div className="mk-voice-tools">{voiceButton}{voiceFeedback}</div>}
       <div className="mk-search"><label htmlFor="mk-query">메뉴 검색</label><input type="search" id="mk-query" value={search} placeholder="메뉴 이름이나 재료를 입력하세요" onChange={(event) => { setSearch(event.target.value); setPage(1); }}/></div>
       {loadState === 'loading' && <p className="mk-status" role="status">메뉴를 불러오고 있어요.</p>}{loadState === 'error' && <div className="mk-status" role="alert">메뉴 데이터를 불러오지 못했어요. <button className="mk-secondary" onClick={onRetry}>다시 불러오기</button></div>}
       {loadState === 'ready' && <><div className="mk-results">{filtered.length}개 메뉴 항목 · {page}/{pages}쪽</div>{visible.length ? <div className="mk-grid">{visible.map((item) => <button className="mk-card" key={item.id} aria-label={[item.name, tempText(item), priceText(item.price)].filter(Boolean).join(', ')} onClick={() => openItem(item)}><span className="mk-card-art"><MenuPhoto item={item}/></span>{item.is_new && <span className="mk-new">신상품</span>}<strong>{item.name}</strong><span className="mk-card-price">{priceText(item.price)}</span></button>)}</div> : <p className="mk-status">해당하는 메뉴가 없어요. 다른 이름을 검색해 주세요.</p>}
       {pages > 1 && <div className="mk-pages"><button className="mk-secondary" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>← 이전</button><span>{page} / {pages}</span><button className="mk-secondary" disabled={page === pages} onClick={() => setPage((p) => p + 1)}>다음 →</button></div>}
       </>}
     </main>
-    <section className="mk-cart" aria-label="주문 목록"><div className="mk-cart-heading"><div><span className="mk-eyebrow">주문 목록</span><strong>고른 메뉴 {count}개</strong></div><div><button className="mk-cart-help" aria-expanded={compactHelp} onClick={() => setCompactHelp(!compactHelp)}>도움말</button><button className="mk-clear" disabled={!cart.length} onClick={() => { setCart([]); speak?.('주문 목록을 비웠어요.'); }}>전체 삭제</button></div></div>{compactHelp && <p className="mk-cart-tip">수량을 바꾸거나 주문 확인을 눌러주세요.</p>}
+    <section className="mk-cart" aria-label="주문 목록"><div className="mk-cart-heading"><div><span className="mk-eyebrow">주문 목록</span><strong>고른 메뉴 {count}개</strong></div><div><button className="mk-cart-help" aria-expanded={compactHelp} onClick={() => setCompactHelp(!compactHelp)}>도움말</button><button className="mk-clear" disabled={!cart.length} onClick={onClear}>전체 삭제</button></div></div>{compactHelp && <p className="mk-cart-tip">수량을 바꾸거나 주문 확인을 눌러주세요.</p>}
       <div className="mk-cart-layout"><div className="mk-cart-list">{!cart.length ? <p className="mk-empty">원하는 메뉴를 선택해 주세요.</p> : cart.map((item) => <div className="mk-cart-item" key={item.lineId}><div className="mk-cart-name"><strong>{item.name}</strong><small>{(item.selectedOptions || []).map((option) => option.label).filter(Boolean).join(' · ') || '기본'}</small></div><div className="mk-quantity"><button aria-label={`${item.name} 한 개 줄이기`} onClick={() => adjust(item.lineId, -1)}>−</button><span>{item.quantity}개</span><button aria-label={`${item.name} 한 개 늘리기`} onClick={() => adjust(item.lineId, 1)}>＋</button></div><span>{priceText(isPriceKnown(item.price) ? item.price * item.quantity : null)}</span></div>)}</div><div className="mk-cart-checkout"><span>선택한 상품 {count}개</span><strong>{total}</strong><button className="mk-primary" disabled={!cart.length} onClick={onCheckout}>주문 확인하기 →</button></div></div>
     </section>
     {selected && <OptionDialog key={selected.id} item={selected} onClose={closeSelected} onAdd={addItem} speak={speak}/>}
