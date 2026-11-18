@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>CAIFE Review</title>
+  <link rel="stylesheet" href="/assets/review.css">
+  <script src="/assets/review.js" type="module"></script>
+</head>
+<body>
+  <header class="top"><div class="shell brand"><span class="mark" aria-hidden="true">C</span> CAIFE <span class="review-brand">Review</span></div></header>
+  <main class="shell">
+    <section class="heading">
+      <div>
+        <h1>주문 응대 검토</h1>
+        <p>질문과 처리 내용을 확인하고 평가를 남깁니다.</p>
+      </div>
+      <a class="button download" href="/api/review/approved.jsonl" download hidden>승인 자료 내려받기</a>
+    </section>
+    <nav class="tabs" aria-label="검토 화면">
+      <button type="button" data-page="question" aria-pressed="true">질문 에이전트</button>
+      <button type="button" data-page="action" aria-pressed="false">행동 에이전트</button>
+      <button type="button" data-page="evaluation" aria-pressed="false">평가 에이전트</button>
+      <button type="button" data-page="usage" aria-pressed="false">GPT 사용량</button>
+    </nav>
+    <p id="load-notice" class="notice" role="status" hidden></p>
+    <div id="workspace" class="workspace">
+      <aside class="panel list" aria-labelledby="queue-title">
+        <div class="panel-heading"><h2 id="queue-title">질문 목록</h2><span class="count" id="count"></span></div>
+        <div class="filters">
+          <label>질문 검색 <input type="search" id="search" placeholder="메뉴명이나 질문"></label>
+          <div class="filter-row">
+            <label>용도
+              <select id="split">
+                <option value="train">학습용</option><option value="">전체</option>
+                <option value="validation">검증용</option><option value="test">시험용</option>
+              </select>
+            </label>
+            <label>평가 상태
+              <select id="status">
+                <option value="">전체</option><option value="미평가">미평가</option>
+                <option>승인</option><option>수정 필요</option><option>반려</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <ol id="questions"></ol>
+        <div class="pagination">
+          <button type="button" id="previous">이전</button>
+          <span id="page-number" aria-live="polite"></span>
+          <button type="button" id="next">다음</button>
+        </div>
+      </aside>
+      <section id="detail" class="panel detail" aria-live="polite"></section>
+    </div>
+    <section id="usage" class="panel detail" aria-labelledby="usage-title" hidden>
+      <h2 id="usage-title">GPT 사용량</h2>
+      <div class="usage-summary">
+        <div><span>누적 토큰</span><strong id="token-total">—</strong></div>
+        <div><span>호출 횟수</span><strong id="call-total">—</strong></div>
+      </div>
+      <p id="usage-notice" class="muted" role="status" hidden></p>
+      <table id="usage-table" hidden>
+        <thead><tr><th scope="col">담당</th><th scope="col">호출</th><th scope="col">입력</th><th scope="col">출력</th><th scope="col">합계</th></tr></thead>
+        <tbody id="usage-body"></tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

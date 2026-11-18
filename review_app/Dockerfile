@@ -7,8 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt \
-    && mkdir -p /app/review_data
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 COPY . /app/review_app
 EXPOSE 8501
-CMD ["streamlit", "run", "review_app/app.py", "--server.address", "0.0.0.0", "--server.port", "8501", "--server.headless", "true"]
+CMD ["uvicorn", "app:app", "--app-dir", "/app/review_app", "--host", "0.0.0.0", "--port", "8501"]
