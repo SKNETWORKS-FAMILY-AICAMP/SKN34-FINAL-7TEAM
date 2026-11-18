@@ -140,6 +140,44 @@ def _proposal(value: Mapping[str, Any], fact_ids: set[str]) -> dict[str, Any]:
             "source_ids": list(dict.fromkeys(ids)), "uncertainties": uncertainties}
 
 
+def _generate_proposal(
+    provider: Provider, scenario: str, question: str, facts: list[dict[str, str]],
+    *, revision: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "instruction": INSTRUCTIONS["action_generator"], "scenario": scenario,
+        "question": question, "source_facts": facts, "allowed_actions": sorted(ALLOWED_ACTIONS),
+        "action_contracts": ACTION_CONTRACTS,
+        "response_format": {"actions": [{"name": "string", "arguments": {}}],
+                            "customer_reply": "string", "source_ids": ["string"],
+                            "uncertainties": ["string"]},
+    }
+    if revision is not None:
+        payload["instruction"] += " 검토 지시에 해당하는 행동과 안내만 수정합니다."
+        payload["revision"] = revision
+    return _proposal(_response(provider, "action_generator", payload), {fact["id"] for fact in facts})
+
+
+def _review_proposal(
+    provider: Provider, scenario: str, question: str, facts: list[dict[str, str]],
+    proposal: dict[str, Any], *, revision: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    payload = {
+        "instruction": INSTRUCTIONS["supervisor"], "scenario": scenario,
+        "question": question, "proposal": proposal, "source_facts": facts,
+        "response_format": {"verdict": "pass|needs_revision", "reason": "string"},
+    }
+    if revision is not None:
+        payload["instruction"] += " 검토 지시가 수정된 제안에 적절히 반영됐는지도 확인합니다."
+        payload["revision"] = revision
+    review_result = _response(provider, "supervisor", payload)
+    verdict = review_result.get("verdict")
+    if verdict not in ("pass", "needs_revision"):
+        raise WorkflowError("supervisor", "검토 결과는 pass 또는 needs_revision이어야 합니다.")
+    reason = _text(review_result.get("reason"), "검토 이유", "supervisor")
+    return {"verdict": verdict, "reason": reason}
+
+
 def generate_for_human_review(
     provider: Provider, *, scenario: str, source_facts: list[dict[str, str]]
 ) -> dict[str, Any]:
@@ -151,37 +189,20 @@ def generate_for_human_review(
     scenario = _text(scenario, "상황", "input", 1000)
     facts = _facts(source_facts)
     model = _text(getattr(provider, "model_identifier", None), "모델 식별자", "input", 200)
-
     question_result = _response(provider, "question_generator", {
         "instruction": INSTRUCTIONS["question_generator"], "scenario": scenario,
         "source_facts": facts,
         "response_format": {"question": "string"},
     })
     question = _text(question_result.get("question"), "질문", "question_generator", 1000)
-    proposal_result = _response(provider, "action_generator", {
-        "instruction": INSTRUCTIONS["action_generator"], "scenario": scenario,
-        "question": question, "source_facts": facts, "allowed_actions": sorted(ALLOWED_ACTIONS),
-        "action_contracts": ACTION_CONTRACTS,
-        "response_format": {"actions": [{"name": "string", "arguments": {}}],
-                            "customer_reply": "string", "source_ids": ["string"],
-                            "uncertainties": ["string"]},
-    })
-    proposal = _proposal(proposal_result, {x["id"] for x in facts})
-    review_result = _response(provider, "supervisor", {
-        "instruction": INSTRUCTIONS["supervisor"], "scenario": scenario,
-        "question": question, "proposal": proposal, "source_facts": facts,
-        "response_format": {"verdict": "pass|needs_revision", "reason": "string"},
-    })
-    verdict = review_result.get("verdict")
-    if verdict not in ("pass", "needs_revision"):
-        raise WorkflowError("supervisor", "검토 결과는 pass 또는 needs_revision이어야 합니다.")
-    reason = _text(review_result.get("reason"), "검토 이유", "supervisor")
+    proposal = _generate_proposal(provider, scenario, question, facts)
+    review = _review_proposal(provider, scenario, question, facts, proposal)
     return {
         "schema_version": VERSION,
         "scenario": scenario,
         "question": question,
         "proposal": proposal,
-        "ai_review": {"verdict": verdict, "reason": reason},
+        "ai_review": review,
         "human_review": {"status": "pending"},
         "provenance": {"origin": "synthetic_ai", "model": model,
                        "source_snapshots": [
@@ -191,4 +212,83 @@ def generate_for_human_review(
                        ],
                        "created_at_utc": datetime.now(timezone.utc).isoformat()},
     }
+
+
+def revise_actions_from_feedback(
+    provider: Provider, *, cases: Mapping[str, dict[str, Any]], feedback: str
+) -> dict[str, Any]:
+    """선택한 묶음의 자연어 피드백을 검토 대기 중인 행동 제안에 적용한다.
+
+    cases의 값은 report와 source_facts를 포함한다. 수정 전후와 재검토 결과만
+    반환하며, 원본이나 승인 상태를 수정하거나 주문을 실행하지 않는다.
+    """
+    feedback = _text(feedback, "피드백", "feedback", 2000)
+    if not 1 <= len(cases) <= 20:
+        raise WorkflowError("feedback", "한 번에 질문 1~20개를 전달해 주세요.")
+    eligible = {}
+    for case_id, case in cases.items():
+        case_id = _text(case_id, "질문 ID", "feedback", 200)
+        report = case["report"]
+        if report.get("human_review", {}).get("status") != "pending":
+            continue
+        if case_id in eligible:
+            raise WorkflowError("feedback", "질문 ID가 중복되었습니다.")
+        facts = _facts(case["source_facts"])
+        proposal = _proposal(report["proposal"], {fact["id"] for fact in facts})
+        eligible[case_id] = (
+            _text(report.get("scenario"), "상황", "feedback", 1000),
+            _text(report.get("question"), "질문", "feedback", 1000),
+            facts, proposal,
+        )
+    if not eligible:
+        return {"status": "no_changes", "changes": []}
+
+    plan = _response(provider, "supervisor", {
+        "instruction": (
+            "사용자의 피드백을 읽고 제공된 질문 중 수정 지시에 해당하는 행동만 고르세요. "
+            "필요한 재질문은 그대로 두세요. 행동 수정 범위를 판단하기 어렵거나 질문 문장·"
+            "공통 설정을 바꾸라는 요청이면 대상 없이 clarification에 한 문장으로 알려주세요. "
+            "수정이 필요한 항목이 없다면 targets는 빈 배열이고 clarification은 null입니다."
+        ),
+        "feedback": feedback,
+        "cases": [
+            {"case_id": key, "scenario": scenario, "question": question, "proposal": proposal,
+             "source_facts": facts}
+            for key, (scenario, question, facts, proposal) in eligible.items()
+        ],
+        "response_format": {"targets": [{"case_id": "string", "instruction": "string"}],
+                            "clarification": "string|null"},
+    })
+    targets = plan.get("targets")
+    if not isinstance(targets, list) or len(targets) > len(eligible):
+        raise WorkflowError("feedback", "수정 대상 목록이 올바르지 않습니다.")
+    clarification = plan.get("clarification")
+    if clarification is not None:
+        if targets:
+            raise WorkflowError("feedback", "수정 대상과 확인 요청을 함께 처리할 수 없습니다.")
+        clarification = _text(clarification, "확인 질문", "feedback", 1000)
+        return {"status": "needs_clarification", "clarification": clarification, "changes": []}
+
+    instructions = {}
+    for target in targets:
+        if not isinstance(target, Mapping):
+            raise WorkflowError("feedback", "수정 대상의 형식이 올바르지 않습니다.")
+        case_id = _text(target.get("case_id"), "질문 ID", "feedback", 200)
+        if case_id not in eligible or case_id in instructions:
+            raise WorkflowError("feedback", "수정할 수 없는 질문이 포함되었거나 중복되었습니다.")
+        instructions[case_id] = _text(target.get("instruction"), "수정 지시", "feedback", 1000)
+
+    changes = []
+    for case_id, instruction in instructions.items():
+        scenario, question, facts, before = eligible[case_id]
+        revision = {"instruction": instruction, "before": before}
+        after = _generate_proposal(provider, scenario, question, facts, revision=revision)
+        if after == before:
+            continue
+        review = _review_proposal(provider, scenario, question, facts, after, revision=revision)
+        changes.append({
+            "case_id": case_id, "question": question, "before": before, "after": after,
+            "ai_review": review, "human_review": {"status": "pending"},
+        })
+    return {"status": "revised" if changes else "no_changes", "changes": changes}
 
