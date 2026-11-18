@@ -3,6 +3,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from .assistant_evidence import OrderEvidence, local_information_action
+
 router = APIRouter(prefix="/api/assistant")
 
 TurnText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
@@ -39,5 +41,10 @@ class OrderAssistantTurn(BaseModel):
 
 @router.post("/turn")
 def assistant_turn(turn: OrderAssistantTurn) -> dict:
-    """Accept kiosk context and keep local ordering available until a provider is connected."""
-    return {"version": turn.version, "mode": "rules"}
+    """Retrieve local evidence and answer supported information requests before provider integration."""
+    state = turn.state.model_dump()
+    evidence = OrderEvidence.from_storage().select(turn.transcript, [entry.model_dump() for entry in turn.history], state)
+    action = local_information_action(turn.transcript, evidence, turn.categories, state)
+    if action:
+        return {"version": turn.version, "mode": "decision", "actions": [action], "evidence": evidence}
+    return {"version": turn.version, "mode": "rules", "evidence": evidence}

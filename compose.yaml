@@ -6,12 +6,14 @@ services:
         required: false
     environment:
       CAIFE_MENU_DATA_FILE: /app/data/menus/mega/mega_menu.json
+      CAIFE_STORE_FACTS_FILE: /app/data/store/store.facts.json
       CAIFE_ORDER_DB_FILE: /app/data/orders/caife.sqlite3
     ports:
       - "${CAIFE_BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend/app:/app/app
       - ./data/menus/mega:/app/data/menus/mega:ro
+      - ./data/store:/app/data/store:ro
       - ./data/orders:/app/data/orders
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 

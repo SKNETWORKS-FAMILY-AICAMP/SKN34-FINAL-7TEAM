@@ -93,7 +93,8 @@ function pendingOrder(action, index) {
   });
   const labels = action.choices ?? [];
   assertOrder(Array.isArray(labels) && labels.length <= 4);
-  return { field: action.field, items: draft, choices: [...new Set(labels.map((label) => boundedText(label, 32)))] };
+  return { field: action.field, items: draft, choices: [...new Set(labels.map((label) => boundedText(label, 32)))],
+    ...(action.purpose === 'info' ? { purpose: 'info' } : {}) };
 }
 
 export function prepareOrderDecision({ decision, state, items }) {
@@ -106,6 +107,10 @@ export function prepareOrderDecision({ decision, state, items }) {
     assertOrder(action && typeof action === 'object');
     const duringOrder = !next.confirmHome && !next.checkout;
     switch (action.type) {
+      case 'inform':
+        if (action.clear_info === true && next.pending?.purpose === 'info') next.pending = null;
+        message = boundedText(action.text, 280);
+        break;
       case 'ask':
         assertOrder(position === decision.actions.length - 1);
         next.pending = pendingOrder(action, index);

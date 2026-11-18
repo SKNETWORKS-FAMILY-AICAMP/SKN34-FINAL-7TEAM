@@ -110,7 +110,9 @@ npm run dev
 
 ## 주문 도우미 연동
 
-키오스크는 받아쓴 텍스트, 최근 대화, 현재 화면과 주문 상태, 관련 메뉴와 선택 가능한 옵션을 `POST /api/assistant/turn`으로 보냅니다. 현재 서버는 `version: 1`과 `mode: "rules"`를 반환하여 기존 규칙 기반 주문을 사용합니다.
+키오스크는 받아쓴 텍스트, 최근 대화, 현재 화면과 주문 상태, 관련 메뉴와 선택 가능한 옵션을 `POST /api/assistant/turn`으로 보냅니다. 서버는 메뉴 별칭, 용량·영양·알레르기와 가상 매장 안내를 찾아 `evidence`에 담습니다. 일치하는 정보 문의에는 근거를 바탕으로 안내하고, 일반 주문은 `mode: "rules"`로 기존 규칙 기반 주문에 전달합니다.
+
+검색은 `data/menus/mega/processed_v2`의 `menus.normalized.json`과 `menus.aliases.json`, 그리고 `data/store/store.facts.json`을 사용합니다. 경로는 `CAIFE_MENU_FACTS_DIR`과 `CAIFE_STORE_FACTS_FILE`로 변경할 수 있습니다. 자료 생성은 [전처리 안내](scripts/preprocessing/README.md)를 참고하세요. 영양 정보를 찾지 못하면 확인이 어렵다고 안내하며, 가상 매장 정보는 공개 설정이 적용된 항목만 사용합니다.
 
 모델을 연결할 때는 같은 주소에서 `mode: "decision"`과 `actions`를 반환합니다. 예를 들어 필요한 온도만 물을 때는 다음 형식을 사용합니다. `items`의 각 항목은 처리 중인 메뉴 ID 후보와 해당 수량을 담습니다.
 
