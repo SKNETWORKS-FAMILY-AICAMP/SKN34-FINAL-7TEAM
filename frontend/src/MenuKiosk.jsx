@@ -20,9 +20,12 @@ function MenuPhoto({ item }) {
   return <img className="mk-menu-photo" src={`/api/menu-images/${encodeURIComponent(item.id)}`} alt="" loading="lazy" onError={() => setFailed(true)}/>;
 }
 
-function OptionDialog({ item, onClose, onAdd, guide }) {
-  const [quantity, setQuantity] = useState(1);
-  const [choices, setChoices] = useState({});
+function OptionDialog({ item, onClose, onAdd, guide, optionDraft, setOptionDraft }) {
+  const { quantity, choices } = optionDraft;
+  const setQuantity = (update) => setOptionDraft((draft) => ({ ...draft, quantity: update(draft.quantity) }));
+  const setChoices = (update) => setOptionDraft((draft) => ({
+    ...draft, choices: typeof update === 'function' ? update(draft.choices) : update,
+  }));
   const groups = Array.isArray(item.option_groups) ? item.option_groups : [];
   const selectedOptions = groups.flatMap((group) => {
     const choice = group.choices.find((option) => option.id === choices[group.id]);
@@ -85,7 +88,7 @@ function OptionDialog({ item, onClose, onAdd, guide }) {
 export default function MenuKiosk({
   items = [], loadState, onRetry, cart = [], setCart, speak, onHome, onCheckout, largeText, setLargeText,
   slow, setSlow, speaking, stopSpeech, guide, menuView, onCategory, selectedItem, onSelectItem, onCloseItem,
-  onAddItem, highlightedLine, onClear, cancelRecognition,
+  onAddItem, highlightedLine, onClear, cancelRecognition, optionDraft, setOptionDraft,
 }) {
   const { category } = menuView;
   const [search, setSearch] = useState('');
@@ -141,6 +144,7 @@ export default function MenuKiosk({
         <div className="mk-cart-checkout"><span>총액</span><strong>{cart.length ? total : '0원'}</strong><button className="mk-primary" disabled={!cart.length} onClick={onCheckout}>주문 확인하기 →</button></div>
       </div>
     </section>
-    {selectedItem && <OptionDialog key={selectedItem.id} item={selectedItem} onClose={onCloseItem} onAdd={onAddItem} guide={guide}/>}
+    {selectedItem && <OptionDialog key={selectedItem.id} item={selectedItem} onClose={onCloseItem} onAdd={onAddItem} guide={guide}
+      optionDraft={optionDraft} setOptionDraft={setOptionDraft}/>}
   </div>;
 }

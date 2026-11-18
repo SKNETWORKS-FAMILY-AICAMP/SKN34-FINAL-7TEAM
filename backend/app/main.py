@@ -12,7 +12,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
+from .assistant_turn import router as assistant_router
+
 app = FastAPI(title="CAIFE API", version="0.1.0")
+app.include_router(assistant_router)
 
 
 @app.get("/api/health")

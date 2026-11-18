@@ -108,6 +108,24 @@ npm run dev
 3. 음성 주문에서 메뉴와 옵션이 빠지면 질문하고, 확인된 주문을 목록에 담습니다.
 4. 결제 테스트 연동을 진행합니다.
 
+## 주문 도우미 연동
+
+키오스크는 받아쓴 텍스트, 최근 대화, 현재 화면과 주문 상태, 관련 메뉴와 선택 가능한 옵션을 `POST /api/assistant/turn`으로 보냅니다. 현재 서버는 `version: 1`과 `mode: "rules"`를 반환하여 기존 규칙 기반 주문을 사용합니다.
+
+모델을 연결할 때는 같은 주소에서 `mode: "decision"`과 `actions`를 반환합니다. 예를 들어 필요한 온도만 물을 때는 다음 형식을 사용합니다. `items`의 각 항목은 처리 중인 메뉴 ID 후보와 해당 수량을 담습니다.
+
+```json
+{
+  "version": 1,
+  "mode": "decision",
+  "actions": [
+    { "type": "ask", "field": "temperature", "text": "나머지 한 잔은 어떤 온도로 드릴까요?", "choices": ["아이스", "따뜻하게"] }
+  ]
+}
+```
+
+키오스크는 [주문 동작의 형식과 검증](frontend/src/orderAssistant.js)을 기준으로 요청을 검사한 뒤 화면에 반영합니다. `node --test frontend/tests/orderAssistant.test.js`로 온도가 다른 두 잔 주문과 잘못된 응답을 검증할 수 있습니다.
+
 ## 데이터 전처리
 
 메뉴별 검색 문서와 주문 의도 합성 문장, 학습·검증·시험 분할 및 문자 TF-IDF 변환 결과를 준비할 수 있습니다. 실행 방법과 생성 파일은 [전처리 안내](scripts/preprocessing/README.md)를 참고하세요. 주문 의도 분류 모델 학습과 메뉴 임베딩·벡터DB 구축은 아직 수행하지 않았습니다.

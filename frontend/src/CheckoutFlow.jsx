@@ -1,16 +1,10 @@
-import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useRef } from 'react';
+import { canAdvanceCheckout, checkoutGuide, SUPPLIES } from './orderAssistant';
 import './styles/checkout.css';
 
 const PRICE = (value) => Number.isFinite(value) ? `${value.toLocaleString('ko-KR')}원` : '가격 미확인';
 const LABELS = { review: '주문을 확인해 주세요', supplies: '필요한 일회용품을 골라 주세요', payment: '할인과 결제 방법을 골라 주세요', confirm: '결제 내용을 확인해 주세요' };
-const GUIDANCE = {
-  review: '주문 내역과 금액을 확인해 주세요.',
-  supplies: '필요한 일회용품을 골라 주세요. 없으면 필요 없어요를 눌러 주세요.',
-  payment: '카드나 간편결제 중 하나를 골라 주세요.',
-  confirm: '메뉴, 금액, 결제 방법을 마지막으로 확인해 주세요.',
-};
 const STEPS = [['review', '주문 확인'], ['supplies', '일회용품'], ['payment', '결제 방법'], ['confirm', '최종 확인']];
-const SUPPLIES = [['straw', '빨대 / 스틱'], ['bag', '캐리어 / 봉투'], ['self', '직접 가져갈게요']];
 const supplyName = (key) => SUPPLIES.find(([value]) => value === key)?.[1] || key;
 const optionText = (option) => {
   if (typeof option === 'string') return option;
@@ -30,19 +24,20 @@ function OrderRows({ cart }) {
   })}</div>;
 }
 
-export default function CheckoutFlow({ cart, dining, onDiningChange, onClose, onStepGuide, guide }) {
-  const [step, setStep] = useState('review');
-  const [supplies, setSupplies] = useState([]);
-  const [payment, setPayment] = useState(null);
+export default function CheckoutFlow({ cart, dining, onDiningChange, onClose, onStepGuide, guide, checkoutState, setCheckoutState }) {
+  const { step, supplies, payment } = checkoutState;
   const dialogRef = useRef(null);
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
   const allPriced = cart.length > 0 && cart.every((item) => Number.isFinite(item.price));
   const total = allPriced ? PRICE(cart.reduce((sum, item) => sum + item.price * item.quantity, 0)) : '총액 미확인';
   const content = useRef(null);
   const close = useEffectEvent(onClose);
-  const go = (next) => { setStep(next); onStepGuide(GUIDANCE[next]); };
+  const go = (next, update = {}) => {
+    setCheckoutState((previous) => ({ ...previous, ...update, step: next }));
+    onStepGuide(checkoutGuide(next, dining));
+  };
   const choosePayment = (method) => {
-    setPayment(method);
+    setCheckoutState((previous) => ({ ...previous, payment: method }));
     onStepGuide(method + '를 골랐어요. 결제 예정 금액을 보고 다음을 눌러 주세요.');
   };
 
@@ -64,10 +59,12 @@ export default function CheckoutFlow({ cart, dining, onDiningChange, onClose, on
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
-  const toggleSupply = (key) => setSupplies((current) => {
-    if (key === 'self') return current.includes('self') ? [] : ['self'];
-    const next = current.filter((entry) => entry !== 'self');
-    return next.includes(key) ? next.filter((entry) => entry !== key) : [...next, key];
+  const toggleSupply = (key) => setCheckoutState((previous) => {
+    const current = previous.supplies;
+    const next = current.filter((entry) => entry !== 'self' && entry !== key);
+    const supplies = key === 'self' ? (current.includes(key) ? [] : [key])
+      : (current.includes(key) ? next : [...next, key]);
+    return { ...previous, supplies };
   });
 
   return <div className="ck-overlay">
@@ -111,12 +108,12 @@ export default function CheckoutFlow({ cart, dining, onDiningChange, onClose, on
         </div>}
         {step === 'supplies' && <div className="ck-actions">
           <button className="ck-secondary" onClick={() => go('review')}>이전</button>
-          <button className="ck-secondary" onClick={() => { setSupplies([]); go('payment'); }}>필요 없어요</button>
+          <button className="ck-secondary" onClick={() => go('payment', { supplies: [] })}>필요 없어요</button>
           <button className="ck-primary" onClick={() => go('payment')}>선택 완료</button>
         </div>}
         {step === 'payment' && <div className="ck-actions">
           <button className="ck-secondary" onClick={() => go('supplies')}>이전</button>
-          <button className="ck-primary" disabled={!payment || !allPriced} onClick={() => go('confirm')}>다음</button>
+          <button className="ck-primary" disabled={!canAdvanceCheckout({ ...checkoutState, cart, dining })} onClick={() => go('confirm')}>다음</button>
         </div>}
         {step === 'confirm' && <>
           <div className="ck-actions">

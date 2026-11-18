@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import MenuKiosk from './MenuKiosk';
 import CheckoutFlow from './CheckoutFlow';
 import { addCartItem, cartLineId, categoryFromSpeech, interpretVoiceOrder, preferredKoreanVoice } from './voiceOrder';
 import { observeApproach } from './approachCamera';
+import { EMPTY_CHECKOUT, EMPTY_OPTIONS, checkoutGuide, getOrderDecision, makeOrderTurn, prepareOrderDecision } from './orderAssistant';
 import './styles/base.css';
 
 const VOICE_GREETING = '어서 오세요! 주문 도와드릴게요. 원하시는 메뉴를 말씀해 주세요.';
@@ -83,10 +84,12 @@ function App() {
   const [screen, setScreen] = useState('home');
   const [menuView, setMenuView] = useState({ category: '전체' });
   const [selectedItem, setSelectedItem] = useState(null);
+  const [optionDraft, setOptionDraft] = useState(EMPTY_OPTIONS);
   const [highlightedLine, setHighlightedLine] = useState(null);
   const [cart, setCart] = useState([]);
   const [dining, setDining] = useState(null);
   const [checkout, setCheckout] = useState(false);
+  const [checkoutState, setCheckoutState] = useState(EMPTY_CHECKOUT);
   const [confirmHome, setConfirmHome] = useState(false);
   const [largeText, setLargeText] = useState(false);
   const [slow, setSlow] = useState(false);
@@ -96,15 +99,28 @@ function App() {
   const [heard, setHeard] = useState('');
   const [voiceMessage, setVoiceMessage] = useState('');
   const [voiceDraft, setVoiceDraft] = useState(null);
+  const [assistantPending, setAssistantPending] = useState(null);
   const [afterVoiceAdd, setAfterVoiceAdd] = useState(false);
   const [chooseVoiceDining, setChooseVoiceDining] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(START_WITH_CAMERA);
   const speechRef = useRef(null);
   const recognitionRef = useRef(null);
   const recognitionTimer = useRef(null);
+  const assistantRequest = useRef(null);
+  const orderHistory = useRef([]);
   const automaticSession = useRef(false);
   const greetedOnLoad = useRef(false);
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const cancelAssistantRequest = useCallback(() => {
+    if (!assistantRequest.current) return;
+    assistantRequest.current.abort();
+    assistantRequest.current = null;
+    setVoicePhase((phase) => phase === 'thinking' ? 'idle' : phase);
+  }, []);
+  useLayoutEffect(() => {
+    cancelAssistantRequest();
+  }, [cancelAssistantRequest, screen, menuView, cart, dining, checkout, checkoutState, confirmHome, selectedItem, optionDraft]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -179,10 +195,13 @@ function App() {
     voiceReply('담은 메뉴를 그대로 두었어요. 계속 주문해 주세요.', true);
   };
   const resetVoice = () => {
+    cancelAssistantRequest();
+    orderHistory.current = [];
     stopAutomaticSession();
     setHeard('');
     setVoiceMessage('');
     setVoiceDraft(null);
+    setAssistantPending(null);
     setAfterVoiceAdd(false);
     setChooseVoiceDining(false);
   };
@@ -193,7 +212,9 @@ function App() {
     setDining(null);
     setConfirmHome(false);
     setCheckout(false);
+    setCheckoutState(EMPTY_CHECKOUT);
     setSelectedItem(null);
+    setOptionDraft(EMPTY_OPTIONS);
     setHighlightedLine(null);
     setMenuView({ category: '전체' });
     setScreen('home');
@@ -212,10 +233,12 @@ function App() {
     setSelectedItem(null);
     setScreen('menu');
     setVoiceDraft(null);
+    setAssistantPending(null);
     setAfterVoiceAdd(false);
     setChooseVoiceDining(false);
     setCheckout(true);
-    voiceReply(chosenDining ? '주문 내역과 금액을 확인해 주세요.' : '주문 내역을 확인하고 매장이나 포장을 골라 주세요.', true);
+    setCheckoutState(EMPTY_CHECKOUT);
+    voiceReply(checkoutGuide('review', chosenDining), true);
   };
   const closeCheckout = () => {
     setCheckout(false);
@@ -237,6 +260,7 @@ function App() {
     voiceReply(mode ? '이용 방법을 골랐어요. 주문 내역을 확인하고 다음을 눌러 주세요.' : '매장에서 드실지, 포장하실지 골라 주세요.', true);
   };
   const voiceReply = (message, waitForAnswer = false) => {
+    orderHistory.current = [...orderHistory.current, { role: 'assistant', text: message.slice(0, 500) }].slice(-8);
     setVoiceMessage(message);
     if (waitForAnswer && automaticSession.current) {
       setVoicePhase('speaking');
@@ -267,7 +291,9 @@ function App() {
   const chooseItem = (item) => {
     setHeard('');
     setSelectedItem(item);
+    setOptionDraft(EMPTY_OPTIONS);
     setVoiceDraft(null);
+    setAssistantPending(null);
     voiceReply(item.option_groups?.length ? '옵션과 수량을 고르고 주문 목록에 담아 주세요.' : '수량을 고르고 주문 목록에 담아 주세요.', true);
   };
   const putInCart = (item, count, options = []) => {
@@ -280,6 +306,7 @@ function App() {
       return;
     }
     setCart((current) => addCartItem(current, item, added, sortedOptions));
+    setAssistantPending(null);
     setSelectedItem(null);
     setHighlightedLine(lineId);
     setAfterVoiceAdd(true);
@@ -358,8 +385,63 @@ function App() {
     putInCart(result.item, result.count);
   };
 
+  const handleAssistantTurn = async (input) => {
+    const transcript = input.trim().slice(0, 500);
+    if (!transcript || assistantRequest.current) return;
+    if (confirmHome || loadState !== 'ready') {
+      orderByVoice(transcript);
+      return;
+    }
+    const state = { screen, menuView, selectedItem, optionDraft, highlightedLine, cart, dining, checkout,
+      checkoutState, confirmHome, voiceDraft, pending: assistantPending, afterVoiceAdd };
+    const turn = makeOrderTurn({ transcript, items, history: orderHistory.current, state });
+    orderHistory.current = [...orderHistory.current, { role: 'customer', text: transcript }].slice(-8);
+    setHeard(transcript);
+    const controller = new AbortController();
+    assistantRequest.current = controller;
+    setVoicePhase('thinking');
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const result = await getOrderDecision(turn, controller.signal);
+      if (assistantRequest.current !== controller) return;
+      if (result.mode === 'rules') {
+        setVoicePhase('idle');
+        orderByVoice(transcript);
+        return;
+      }
+      const { next, message } = prepareOrderDecision({ decision: result, state, items });
+      if (next.resetOrder) {
+        resetAndGoHome();
+        return;
+      }
+      setScreen(next.screen);
+      setMenuView(next.menuView);
+      setSelectedItem(next.selectedItem);
+      setOptionDraft(next.optionDraft);
+      setHighlightedLine(next.highlightedLine);
+      setCart(next.cart);
+      setDining(next.dining);
+      setCheckout(next.checkout);
+      setCheckoutState(next.checkoutState);
+      setConfirmHome(next.confirmHome);
+      setVoiceDraft(next.voiceDraft);
+      setAssistantPending(next.pending);
+      setAfterVoiceAdd(next.afterVoiceAdd);
+      if (next.cart !== state.cart || next.checkout) setChooseVoiceDining(false);
+      setVoicePhase('idle');
+      voiceReply(message, true);
+    } catch {
+      if (assistantRequest.current !== controller) return;
+      setVoicePhase('idle');
+      voiceReply('주문 내용을 처리하지 못했어요. 다시 말씀하시거나 화면에서 골라 주세요.');
+    } finally {
+      clearTimeout(timeout);
+      if (assistantRequest.current === controller) assistantRequest.current = null;
+    }
+  };
+
   const startRecognition = ({ resume = false } = {}) => {
-    if (recognitionRef.current || !Recognition) return;
+    if (recognitionRef.current || assistantRequest.current || !Recognition) return;
     cancelSpeech();
     if (!resume) {
       setHeard('');
@@ -405,7 +487,7 @@ function App() {
       recognitionRef.current = null;
       clearTimeout(recognitionTimer.current);
       setVoicePhase('idle');
-      if (transcript) orderByVoice(transcript);
+      if (transcript) void handleAssistantTurn(transcript);
       else {
         setVoiceMessage(automaticSession.current ? '아래 버튼을 눌러 주문을 이어갈 수 있어요.' : '말소리를 듣지 못했어요. 다시 말씀해 주세요.');
         automaticSession.current = false;
@@ -455,6 +537,9 @@ function App() {
   useEffect(() => {
     window.speechSynthesis?.getVoices();
     return () => {
+      const pendingRequest = assistantRequest.current;
+      assistantRequest.current = null;
+      pendingRequest?.abort();
       clearTimeout(recognitionTimer.current);
       const active = recognitionRef.current;
       recognitionRef.current = null;
@@ -477,27 +562,33 @@ function App() {
   };
   const recording = ['starting', 'listening', 'finishing'].includes(voicePhase);
   const voiceButton = Recognition && <button type="button" className="voice-order-button"
-    disabled={voicePhase === 'starting' || voicePhase === 'finishing'}
+    disabled={voicePhase === 'starting' || voicePhase === 'finishing' || voicePhase === 'thinking'}
     onClick={recording ? () => {
       if (!recognitionRef.current) return;
       setVoicePhase('finishing');
       recognitionRef.current.stop();
     } : () => startRecognition()}>
     <Icon name="mic" size={26}/>
-    {voicePhase === 'listening' ? '말하기 끝' : recording ? '잠시만요' : '말하기'}
+    {voicePhase === 'listening' ? '말하기 끝' : recording || voicePhase === 'thinking' ? '잠시만요' : '말하기'}
   </button>;
   const voiceIndicator = {
     listening: '듣고 있어요',
     starting: '마이크 준비 중',
     finishing: '말씀하신 내용 확인 중',
+    thinking: '주문 내용 확인 중',
   }[voicePhase];
   const voiceStatus = voiceIndicator || voiceMessage || (!Recognition ? '이 브라우저에서는 화면을 눌러 주문해 주세요.' : '');
   const voiceFeedback = (voiceStatus || heard) && <div className="voice-feedback" role="status">
     {heard && <p className="voice-heard">들었어요: {heard}</p>}
     {voiceStatus && voiceStatus !== VOICE_GREETING && <p>{voiceStatus}</p>}
   </div>;
+  const assistantChoices = assistantPending?.choices.length > 0 && !confirmHome && <div className="order-guide-choices">
+      {assistantPending.choices.map((choice) => <button type="button" key={choice}
+        disabled={voicePhase === 'thinking'} onClick={() => { cancelRecognition(); void handleAssistantTurn(choice); }}>{choice}</button>)}
+  </div>;
   const guide = <OrderGuide message={voiceMessage || '드시고 싶은 메뉴를 골라 주세요.'} heard={heard}
     indicator={voiceIndicator} microphone={voiceButton}>
+    {assistantChoices}
     {voiceDraft?.waitingFor === 'temperature' && !selectedItem && !checkout && !confirmHome && <>
       <p className="order-guide-pending">{voiceDraft.displayName}{voiceDraft.count ? ' ' + voiceDraft.count + '잔' : ''} · 온도 선택</p>
       <div className="order-guide-choices">
@@ -535,6 +626,7 @@ function App() {
             <div className="dialogue-log"><h1>어서 오세요!<br/>주문 도와드릴게요.</h1></div>
             {Recognition && <p className="home-voice-example">“아아 두 잔 주세요”</p>}
             {voiceFeedback}
+            {assistantChoices}
           </div>
         </div>
         <div className="home-actions">
@@ -550,10 +642,10 @@ function App() {
       speaking={speaking} stopSpeech={stopSpeech} guide={checkout || confirmHome ? null : guide}
       menuView={menuView} onCategory={showCategory} selectedItem={selectedItem} onSelectItem={chooseItem}
       onCloseItem={closeOption} onAddItem={putInCart} highlightedLine={highlightedLine}
-      onClear={clearCart} cancelRecognition={cancelRecognition}/>}
+      onClear={clearCart} cancelRecognition={cancelRecognition} optionDraft={optionDraft} setOptionDraft={setOptionDraft}/>}
     {confirmHome && <ResetOrderDialog onCancel={cancelHome} onConfirm={resetAndGoHome} guide={guide}/>}
     <div className="speech-status" role="status">{audioStatus}</div>
-    {checkout && <CheckoutFlow cart={cart} dining={dining} onDiningChange={chooseCheckoutDining}
+    {checkout && <CheckoutFlow cart={cart} dining={dining} checkoutState={checkoutState} setCheckoutState={setCheckoutState} onDiningChange={chooseCheckoutDining}
       onClose={closeCheckout} onStepGuide={(message) => { setHeard(''); voiceReply(message, true); }} guide={guide}/>}
   </div>;
 }
