@@ -116,3 +116,14 @@ python scripts/preprocessing/prepare_unified_intents.py --project-root . --outpu
 현재 자료의 결과는 672건이며 학습·검증·시험 순서로 320·176·176건입니다. 문장 원문, ID, 원래 라벨, 대화 맥락 및 분할을 보존합니다. 정확히 같은 문장과 같은 그룹의 분할 간 중복을 검사하지만, 의미가 비슷한 문장까지 독립이라는 뜻은 아닙니다. 결과는 사람 검토 전 합성 초안입니다.
 
 질문 검토 화면에서 승인한 학습용 문항만 초안과 결합하는 절차는 [승인 질문 처리 안내](README_approved.md)를 참고하세요. 변경한 질문은 의도 라벨을 확인할 때까지 별도 보관합니다.
+
+### 주문 표현 벡터DB 재현
+
+위의 주문 의도 문장 준비 명령으로 데이터를 만든 뒤 프로젝트 루트에서 실행합니다. 저장된 분류 모델의 변환기를 사용하며, 검증·시험 문장은 조회에만 사용합니다.
+
+```bash
+python scripts/preprocessing/search_intents.py
+python scripts/preprocessing/search_intents.py --query "아아 둘이요"
+```
+
+결과는 `models/intent_search`에 저장합니다. `intent_vectors.sqlite3`는 로컬에서 재생성하며, `retrieval_metrics.json`에는 분할별 검색 적중 수와 진단 사례별 상위 후보를 기록합니다.

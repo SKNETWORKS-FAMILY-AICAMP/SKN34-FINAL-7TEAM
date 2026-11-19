@@ -1,0 +1,291 @@
+{
+  "engine": "v0.1.9",
+  "rows": 288,
+  "dimensions": 528,
+  "model_sha256": "648e39b989f0552c866f4eaa59e4610ceca8ad5cca2effbbe848293ef58e3c49",
+  "input_sha256": {
+    "train": "88dabc340ce94b941fd8d3161f198e12697e8d438ac0140cee1af334f02a72e1",
+    "validation": "5454c5154a9d21ca2ade9dd3f9d287766cedfe1d0ac929965f967b103f9dedfc",
+    "test": "552fa7e96db7bdd98ca0ef3f681d58edc7a28262dc4e24fb4cfb9fb7536c8571"
+  },
+  "labels": {
+    "메뉴_문의": 48,
+    "수량_변경": 48,
+    "주문_삭제": 48,
+    "주문_추가": 48,
+    "주문_확인": 48,
+    "화면_조작": 48
+  },
+  "results": {
+    "validation": {
+      "n": 144,
+      "hit1": 144,
+      "hit3": 144,
+      "empty": 0
+    },
+    "test": {
+      "n": 144,
+      "hit1": 144,
+      "hit3": 144,
+      "empty": 0
+    },
+    "probe": {
+      "n": 12,
+      "hit1": 7,
+      "hit3": 7,
+      "empty": 2
+    }
+  },
+  "probe_cases": [
+    {
+      "phrase": "아아 둘이요",
+      "expected": "주문_추가",
+      "matches": [
+        {
+          "id": "f4d279de53e2feed",
+          "phrase": "담아 둔 카페라떼를 지워줘",
+          "intent": "주문_삭제",
+          "similarity": 0.21864
+        },
+        {
+          "id": "1e899a571df6560f",
+          "phrase": "담아 둔 딸기라떼를 지워줘",
+          "intent": "주문_삭제",
+          "similarity": 0.21529
+        },
+        {
+          "id": "181d71c29628e7f0",
+          "phrase": "담아 둔 핫초코를 지워줘",
+          "intent": "주문_삭제",
+          "similarity": 0.21448
+        }
+      ]
+    },
+    {
+      "phrase": "바닐라라테 하나 부탁해요",
+      "expected": "주문_추가",
+      "matches": []
+    },
+    {
+      "phrase": "방금 담은 거 빼 줘",
+      "expected": "주문_삭제",
+      "matches": [
+        {
+          "id": "b47611fad93c7400",
+          "phrase": "딸기라떼 한 잔을 새로 담아줘",
+          "intent": "주문_추가",
+          "similarity": 0.15869
+        },
+        {
+          "id": "ef911728ca9b9757",
+          "phrase": "카페라떼 두 잔을 새로 담아줘",
+          "intent": "주문_추가",
+          "similarity": 0.1578
+        },
+        {
+          "id": "7139d84f0df281d8",
+          "phrase": "핫초코 세 잔을 새로 담아줘",
+          "intent": "주문_추가",
+          "similarity": 0.15604
+        }
+      ]
+    },
+    {
+      "phrase": "크루아상은 안 살래요",
+      "expected": "주문_삭제",
+      "matches": [
+        {
+          "id": "0a949d4ad5c36aa7",
+          "phrase": "장바구니를 한 번 살펴봐줘",
+          "intent": "주문_확인",
+          "similarity": 0.21052
+        },
+        {
+          "id": "a12fa18fca01581f",
+          "phrase": "주문 내역을 한 번 살펴봐줘",
+          "intent": "주문_확인",
+          "similarity": 0.20544
+        },
+        {
+          "id": "2d96aeedd9d736c2",
+          "phrase": "장바구니를 한 번 살펴봐주세요",
+          "intent": "주문_확인",
+          "similarity": 0.20328
+        }
+      ]
+    },
+    {
+      "phrase": "그거 세 개 말고 두 개로",
+      "expected": "수량_변경",
+      "matches": [
+        {
+          "id": "751fcca6e66dc93f",
+          "phrase": "카페라떼 수량을 세 잔으로 바꿔줘",
+          "intent": "수량_변경",
+          "similarity": 0.22661
+        },
+        {
+          "id": "5eeb9a533a15009c",
+          "phrase": "카페라떼 수량을 세 잔으로 바꿔주세요",
+          "intent": "수량_변경",
+          "similarity": 0.21874
+        },
+        {
+          "id": "1b644f6d36f97d98",
+          "phrase": "핫초코 세 잔을 주문에 추가해줘",
+          "intent": "주문_추가",
+          "similarity": 0.21711
+        }
+      ]
+    },
+    {
+      "phrase": "라테가 하나 더 필요해요. 총 두 잔으로요",
+      "expected": "수량_변경",
+      "matches": [
+        {
+          "id": "971a49a28e253106",
+          "phrase": "핫초코 수량을 두 잔으로 바꿔줘",
+          "intent": "수량_변경",
+          "similarity": 0.38956
+        },
+        {
+          "id": "8e2b841cb90fce96",
+          "phrase": "핫초코 수량을 두 잔으로 바꿔주세요",
+          "intent": "수량_변경",
+          "similarity": 0.37547
+        },
+        {
+          "id": "1a71a21c3e9a7973",
+          "phrase": "핫초코 수량을 두 잔으로 고쳐줘",
+          "intent": "수량_변경",
+          "similarity": 0.37196
+        }
+      ]
+    },
+    {
+      "phrase": "이거 디카페인도 돼요?",
+      "expected": "메뉴_문의",
+      "matches": [
+        {
+          "id": "6b7351089632d988",
+          "phrase": "아메리카노에 카페인이 있는지 알려줘",
+          "intent": "메뉴_문의",
+          "similarity": 0.30573
+        },
+        {
+          "id": "2617e36648e18ed8",
+          "phrase": "아메리카노에 카페인이 있는지 알려주세요",
+          "intent": "메뉴_문의",
+          "similarity": 0.29883
+        },
+        {
+          "id": "29a1a5da1400dd61",
+          "phrase": "아메리카노에 카페인이 있는지 말해줘",
+          "intent": "메뉴_문의",
+          "similarity": 0.29763
+        }
+      ]
+    },
+    {
+      "phrase": "우유 안 든 거 뭐 있어요?",
+      "expected": "메뉴_문의",
+      "matches": [
+        {
+          "id": "2c76de875adbdebb",
+          "phrase": "카페라떼에 우유가 들어가는지 알려주시겠어요",
+          "intent": "메뉴_문의",
+          "similarity": 0.16886
+        },
+        {
+          "id": "d1965a9a6c2df275",
+          "phrase": "카페라떼에 우유가 들어가는지 말해주시겠어요",
+          "intent": "메뉴_문의",
+          "similarity": 0.16617
+        },
+        {
+          "id": "82001094e9eae102",
+          "phrase": "카페라떼에 우유가 들어가는지 설명해주시겠어요",
+          "intent": "메뉴_문의",
+          "similarity": 0.16116
+        }
+      ]
+    },
+    {
+      "phrase": "글씨가 작아. 키워 줘",
+      "expected": "화면_조작",
+      "matches": [
+        {
+          "id": "13af1e454b6494b1",
+          "phrase": "화면을 더 잘 보이게 키워줘",
+          "intent": "화면_조작",
+          "similarity": 0.3213
+        },
+        {
+          "id": "f7139ef3ab7b6e4e",
+          "phrase": "화면을 더 잘 보이게 키워주세요",
+          "intent": "화면_조작",
+          "similarity": 0.31298
+        },
+        {
+          "id": "995d7b3f9cd08469",
+          "phrase": "메뉴판을 더 잘 보이게 키워줘",
+          "intent": "화면_조작",
+          "similarity": 0.31041
+        }
+      ]
+    },
+    {
+      "phrase": "커피 종류만 띄워 줘",
+      "expected": "화면_조작",
+      "matches": []
+    },
+    {
+      "phrase": "내가 뭘 시켰더라?",
+      "expected": "주문_확인",
+      "matches": [
+        {
+          "id": "e5f4322aa5e72a8e",
+          "phrase": "내가 고른 메뉴를 알려줘",
+          "intent": "주문_확인",
+          "similarity": 0.36276
+        },
+        {
+          "id": "1f551de6d069b2d1",
+          "phrase": "내가 고른 메뉴를 알려주세요",
+          "intent": "주문_확인",
+          "similarity": 0.3521
+        },
+        {
+          "id": "d8fe06c80ce469ff",
+          "phrase": "내가 고른 메뉴를 알려주시겠어요",
+          "intent": "주문_확인",
+          "similarity": 0.34353
+        }
+      ]
+    },
+    {
+      "phrase": "지금까지 담은 거 읽어 봐요",
+      "expected": "주문_확인",
+      "matches": [
+        {
+          "id": "f79e2e9d926b41f8",
+          "phrase": "장바구니를 다시 읽어줘",
+          "intent": "주문_확인",
+          "similarity": 0.33604
+        },
+        {
+          "id": "9488d8c065fe9175",
+          "phrase": "장바구니를 다시 읽어주세요",
+          "intent": "주문_확인",
+          "similarity": 0.32569
+        },
+        {
+          "id": "426ba5aa889651b5",
+          "phrase": "주문 내역을 다시 읽어줘",
+          "intent": "주문_확인",
+          "similarity": 0.32169
+        }
+      ]
+    }
+  ]
+}
