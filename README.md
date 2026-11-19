@@ -110,11 +110,11 @@ npm run dev
 
 ## 주문 도우미 연동
 
-키오스크는 받아쓴 텍스트, 최근 대화, 현재 화면과 주문 상태, 관련 메뉴와 선택 가능한 옵션을 `POST /api/assistant/turn`으로 보냅니다. 서버는 메뉴 별칭, 용량·영양·알레르기와 가상 매장 안내를 찾아 `evidence`에 담습니다. 일치하는 정보 문의에는 근거를 바탕으로 안내하고, 일반 주문은 `mode: "rules"`로 기존 규칙 기반 주문에 전달합니다.
+키오스크는 음성 인식 결과, 최근 대화와 현재 주문 상태를 `POST /api/assistant/turn`으로 보냅니다. 서버에 `OPENAI_API_KEY`가 설정되어 있으면 GPT가 매장 메뉴를 보고 허용된 주문 동작을 제안합니다. 서버는 메뉴와 옵션을 검증하고, 키오스크는 기존 장바구니 코드로 가격을 계산하고 화면을 바꿉니다. 등록 정보 문의는 기존 자료로 답하며 GPT에 매장 안내 원문을 전달하지 않습니다. 응답의 `source: "openai"`로 GPT 경로를 구분합니다. 키가 없으면 기존 규칙으로 동작하고, 호출 실패 시 주문을 변경하지 않고 터치 선택을 안내합니다. 모델은 `CAIFE_OPENAI_ORDER_MODEL`(기본 `gpt-4.1-mini`)로 설정합니다.
 
 검색은 `data/menus/mega/processed_v2`의 `menus.normalized.json`과 `menus.aliases.json`, 그리고 `data/store/store.facts.json`을 사용합니다. 경로는 `CAIFE_MENU_FACTS_DIR`과 `CAIFE_STORE_FACTS_FILE`로 변경할 수 있습니다. 자료 생성은 [전처리 안내](scripts/preprocessing/README.md)를 참고하세요. 영양 정보를 찾지 못하면 확인이 어렵다고 안내하며, 가상 매장 정보는 공개 설정이 적용된 항목만 사용합니다.
 
-모델을 연결할 때는 같은 주소에서 `mode: "decision"`과 `actions`를 반환합니다. 예를 들어 필요한 온도만 물을 때는 다음 형식을 사용합니다. `items`의 각 항목은 처리 중인 메뉴 ID 후보와 해당 수량을 담습니다.
+GPT 판단을 실행할 때는 같은 주소에서 `mode: "decision"`과 `actions`를 반환합니다. 예를 들어 필요한 온도만 물을 때는 다음 형식을 사용합니다. `items`의 각 항목은 처리 중인 메뉴 ID 후보와 해당 수량을 담습니다.
 
 ```json
 {
@@ -125,6 +125,8 @@ npm run dev
   ]
 }
 ```
+
+실제 GPT 응답과 장바구니 연결을 확인하려면 Docker 실행 후 PowerShell에서 `$env:CAIFE_LIVE_TEST_URL = 'http://127.0.0.1:5173'`을 설정하고 `node --test frontend/tests/orderAssistant.live.test.js`를 실행합니다. GPT 요청 2회가 발생하며 주문 저장이나 결제는 진행하지 않습니다.
 
 키오스크는 [주문 동작의 형식과 검증](frontend/src/orderAssistant.js)을 기준으로 요청을 검사한 뒤 화면에 반영합니다. `node --test frontend/tests/orderAssistant.test.js`로 온도가 다른 두 잔 주문과 잘못된 응답을 검증할 수 있습니다.
 

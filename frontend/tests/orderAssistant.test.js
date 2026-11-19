@@ -47,6 +47,25 @@ test('invalid cart changes leave the original order intact', () => {
   assert.equal(initial.dining, null);
 });
 
+test('the same drink with different options becomes two cart lines before checkout', () => {
+  const order = apply(initial, [
+    { type: 'set_dining', value: '포장' },
+    { type: 'add_items', items: [
+      { menu_id: 'ice', quantity: 1, option_ids: [] },
+      { menu_id: 'ice', quantity: 1, option_ids: ['shot-1'] },
+    ] },
+  ]).next;
+  assert.deepEqual(order.cart.map(({ quantity, price, selectedOptions }) =>
+    [quantity, price, selectedOptions.map(({ choice_id }) => choice_id)]), [[1, 2000, []], [1, 2600, ['shot-1']]]);
+  assert.notEqual(order.cart[0].lineId, order.cart[1].lineId);
+  assert.equal(order.checkout, false);
+  const checkout = apply(order, [{ type: 'open_checkout' }]).next;
+  assert.equal(checkout.checkout, true);
+  assert.equal(checkout.checkoutState.step, 'review');
+  assert.equal(checkout.dining, '포장');
+  assert.deepEqual(checkout.cart, order.cart);
+});
+
 test('options and checkout transitions check the catalog and current stage', () => {
   assert.throws(() => apply(initial, [
     { type: 'open_options', menu_id: 'ice' },

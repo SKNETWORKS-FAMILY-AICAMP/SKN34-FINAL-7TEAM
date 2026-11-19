@@ -1,6 +1,26 @@
 import unittest
 
 from app.assistant_evidence import OrderEvidence, local_information_action
+from app.assistant_turn import validate_plan
+from app.openai_order import OrderPlan, OrderProviderError
+from pydantic import ValidationError
+
+
+class OrderPlanTests(unittest.TestCase):
+    def test_rejects_nonexistent_options_and_checkout_before_add(self):
+        cart = {"ice": {"option_groups": [{"id": "shot", "choices": [{"id": "shot_1"}, {"id": "shot_2"}]}]}}
+        line = {"menu_id": "ice", "quantity": 1, "option_ids": ["shot_1", "shot_2"]}
+        with self.assertRaises(OrderProviderError):
+            validate_plan([{"type": "add_items", "items": [line]}], cart, {"전체"})
+        line["option_ids"] = ["missing"]
+        with self.assertRaises(OrderProviderError):
+            validate_plan([{"type": "add_items", "items": [line]}], cart, {"전체"})
+        with self.assertRaises(OrderProviderError):
+            validate_plan([{"type": "open_checkout"}, {"type": "set_dining", "value": "포장"}], cart, {"전체"})
+
+    def test_cannot_request_payment_execution(self):
+        with self.assertRaises(ValidationError):
+            OrderPlan.model_validate({"actions": [{"type": "charge_payment"}]})
 
 
 class OrderEvidenceTests(unittest.TestCase):
