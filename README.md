@@ -132,4 +132,10 @@ GPT 판단을 실행할 때는 같은 주소에서 `mode: "decision"`과 `action
 
 ## 데이터 전처리
 
-메뉴별 검색 문서와 주문 의도 합성 문장, 학습·검증·시험 분할 및 문자 TF-IDF 변환 결과를 준비할 수 있습니다. 실행 방법과 생성 파일은 [전처리 안내](scripts/preprocessing/README.md)를 참고하세요. 주문 의도 분류 모델 학습과 메뉴 임베딩·벡터DB 구축은 아직 수행하지 않았습니다.
+메뉴 검색 문서와 합성 주문 문장 분할은 [전처리 안내](scripts/preprocessing/README.md)에 따라 생성합니다.
+
+프로젝트 루트에서 `python scripts/preprocessing/train_intents.py`를 실행하면 학습 세트로 문자 TF-IDF와 두 분류기를 학습하고 검증 Macro F1로 모델을 선택합니다. `python scripts/preprocessing/probe_intents.py`는 짧은 표현 12건을 별도로 평가합니다.
+
+[학습 결과서](docs/CAIFE_ML_학습_결과서.pdf)와 [모델·실측 지표](models/intent_baseline/)를 제공합니다. scikit-learn 1.5.2 환경에서 `joblib.load("models/intent_baseline/intent_pipeline.joblib").predict(["메뉴판을 크게 보여주세요"])`로 분류할 수 있습니다.
+
+이 모델은 단일 의도 분류 실험에 사용합니다. 키오스크의 복합 주문 판단은 GPT가 담당합니다.
