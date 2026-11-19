@@ -65,11 +65,18 @@ export function interpretVoiceOrder(transcript, items, draft) {
 
 export function preferredKoreanVoice(voices) {
   const korean = voices.filter((voice) => /^ko(?:[-_]|$)/i.test(voice.lang));
-  // Web Speech only provides a name and language here. Prefer known female voice names.
-  return korean.find((voice) => /heami|sun[\s-]?hi|yuna|서현|선희|해미|유나|female|여성/i.test(voice.name))
-    ?? korean.find((voice) => /^(?:Google 한국의|Google 한국어|Google Korean)$/i.test(voice.name))
-    ?? korean.find((voice) => voice.default)
-    ?? korean[0];
+  // Browsers expose voice names, not age or gender. Prefer available natural Korean voices.
+  const preferences = [
+    /ji[\s-]?min|yoo[\s-]?jin|지민|유진/i,
+    /sun[\s-]?hi|seo[\s-]?hyeon|yuna|선희|서현|유나/i,
+    /^(?:Google 한국의|Google 한국어|Google Korean)$/i,
+    /heami|haemi|해미|\bfemale\b|여성/i,
+  ];
+  for (const pattern of preferences) {
+    const voice = korean.find((candidate) => pattern.test(candidate.name));
+    if (voice) return voice;
+  }
+  return korean.find((voice) => voice.default) ?? korean[0];
 }
 
 export function cartLineId(item, options) {

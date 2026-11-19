@@ -7,7 +7,7 @@ import { observeApproach } from './approachCamera';
 import { EMPTY_CHECKOUT, EMPTY_OPTIONS, checkoutGuide, getOrderDecision, makeOrderTurn, prepareOrderDecision } from './orderAssistant';
 import './styles/base.css';
 
-const VOICE_GREETING = '어서 오세요! 주문 도와드릴게요. 원하시는 메뉴를 말씀해 주세요.';
+const VOICE_GREETING = '안녕하세요, 어서 오세요! 뭐 드릴까요?';
 const START_WITH_CAMERA = new URLSearchParams(window.location.search).get('approach') === 'camera';
 const LISTEN_WINDOW_MS = 8500;
 
@@ -161,8 +161,8 @@ function App() {
     }
     cancelSpeech();
     const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = 'ko-KR'; utterance.rate = slow ? 0.75 : 0.92;
-    utterance.pitch = 1.04;
+    utterance.lang = 'ko-KR'; utterance.rate = slow ? 0.75 : 0.96;
+    utterance.pitch = 1.08;
     const voice = preferredKoreanVoice(window.speechSynthesis.getVoices());
     if (voice) utterance.voice = voice;
     speechRef.current = utterance;
