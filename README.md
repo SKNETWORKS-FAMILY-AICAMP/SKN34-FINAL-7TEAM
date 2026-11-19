@@ -59,11 +59,7 @@ docker compose up --build
 
 종료할 때 터미널에서 `Ctrl+C`를 누릅니다. 컨테이너를 재사용하지 않을 경우 `docker compose down`으로 정리할 수 있습니다.
 
-필요하면 `.env.example`을 `.env`로 복사해 포트를 변경할 수 있습니다. AI·TTS API 키 항목은 아직 기능에 연결되지 않은 자리입니다. 실제 키는 `.env`에만 저장하고 GitHub에 올리지 않습니다.
-
-```powershell
-Copy-Item .env.example .env
-```
+GPT 주문을 사용하려면 프로젝트 루트의 로컬 `.env`에 `OPENAI_API_KEY`를 설정합니다. 필요하면 같은 파일에 `CAIFE_FRONTEND_PORT`와 `CAIFE_BACKEND_PORT`로 포트를 지정할 수 있습니다. Git은 `.env`와 `.env.*` 파일을 제외합니다.
 
 ## 키오스크 자동 음성 응대
 
