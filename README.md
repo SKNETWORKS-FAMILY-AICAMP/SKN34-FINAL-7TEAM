@@ -95,7 +95,7 @@ npm ci
 npm run dev
 ```
 
-기본 개발 화면은 `http://localhost:5173`, 백엔드는 `http://127.0.0.1:8000`입니다. 프론트엔드는 `/api` 요청을 백엔드로 전달합니다. `.env`는 Docker Compose 실행 시 백엔드에 전달되며, 로컬 Python 실행 시 자동으로 읽도록 아직 설정하지 않았습니다.
+개발용 Docker 포트는 이 PC의 `127.0.0.1`에서 접속합니다. 프론트엔드는 `/api` 요청을 백엔드로 전달합니다. Compose는 로컬 설정 중 `OPENAI_API_KEY`와 `CAIFE_OPENAI_ORDER_MODEL`만 백엔드에 전달합니다. Python을 직접 실행할 때는 셸 환경변수로 설정합니다.
 
 ## 다음 개발 순서
 

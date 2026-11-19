@@ -1,15 +1,14 @@
 services:
   backend:
     build: ./backend
-    env_file:
-      - path: .env
-        required: false
     environment:
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      CAIFE_OPENAI_ORDER_MODEL: "${CAIFE_OPENAI_ORDER_MODEL:-gpt-4.1-mini}"
       CAIFE_MENU_DATA_FILE: /app/data/menus/mega/mega_menu.json
       CAIFE_STORE_FACTS_FILE: /app/data/store/store.facts.json
       CAIFE_ORDER_DB_FILE: /app/data/orders/caife.sqlite3
     ports:
-      - "${CAIFE_BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${CAIFE_BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend/app:/app/app
       - ./data/menus/mega:/app/data/menus/mega:ro
@@ -23,7 +22,7 @@ services:
       CAIFE_API_PROXY_TARGET: http://backend:8000
       CAIFE_WATCH_POLLING: "true"
     ports:
-      - "${CAIFE_FRONTEND_PORT:-5173}:5173"
+      - "127.0.0.1:${CAIFE_FRONTEND_PORT:-5173}:5173"
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html

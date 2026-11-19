@@ -3,6 +3,21 @@
 .env.*
 *.pem
 *.key
+# Local credentials, exports and per-machine settings
+.aws/
+.ssh/
+*.p12
+*.pfx
+*.log
+*.sql.gz
+*.sqlite-*
+*.db-*
+compose.override.yaml
+compose.override.yml
+docker-compose.override.yml
+caife_approved_train.jsonl
+training_ready.jsonl
+
 
 # JavaScript dependencies and output
 node_modules/
